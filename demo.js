@@ -681,16 +681,256 @@ mfxImg.onload = () => drawMfxCubeTexture(mfxImg);
 mfxImg.src = 'assets/mfx.gif';
 
 const avatarImgCache = new Map();
+const avatarAnimCache = new Map();
 const avatarCubeTexCache = new Map();
 let activeHeroItem = null;
 
+function decodeGifFrames(buffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length < 13 || String.fromCharCode(bytes[0], bytes[1], bytes[2]) !== 'GIF') {
+    return null;
+  }
+  let pos = 6;
+  const width = bytes[pos] | (bytes[pos + 1] << 8);
+  const height = bytes[pos + 2] | (bytes[pos + 3] << 8);
+  const packed = bytes[pos + 4];
+  pos += 7;
+
+  let gct = null;
+  if (packed & 0x80) {
+    const gctSize = 3 * (1 << ((packed & 0x07) + 1));
+    gct = bytes.subarray(pos, pos + gctSize);
+    pos += gctSize;
+  }
+
+  const workPixels = new Uint8ClampedArray(width * height * 4);
+  const prevPixels = new Uint8ClampedArray(width * height * 4);
+  const frames = [];
+  let totalDurationSec = 0;
+
+  let disposal = 0;
+  let transFlag = false;
+  let transIndex = 0;
+  let delayCs = 10;
+
+  while (pos < bytes.length) {
+    const block = bytes[pos++];
+    if (block === 0x3b) break;
+    if (block === 0x21) {
+      const label = bytes[pos++];
+      if (label === 0xf9) {
+        const subLen = bytes[pos];
+        if (subLen >= 4) {
+          const gcePacked = bytes[pos + 1];
+          disposal = (gcePacked >> 2) & 0x07;
+          transFlag = (gcePacked & 0x01) !== 0;
+          delayCs = bytes[pos + 2] | (bytes[pos + 3] << 8);
+          transIndex = bytes[pos + 4];
+        }
+      }
+      while (pos < bytes.length) {
+        const subLen = bytes[pos++];
+        if (subLen === 0) break;
+        pos += subLen;
+      }
+    } else if (block === 0x2c) {
+      const left = bytes[pos] | (bytes[pos + 1] << 8);
+      const top = bytes[pos + 2] | (bytes[pos + 3] << 8);
+      const fw = bytes[pos + 4] | (bytes[pos + 5] << 8);
+      const fh = bytes[pos + 6] | (bytes[pos + 7] << 8);
+      const lpacked = bytes[pos + 8];
+      pos += 9;
+
+      let ct = gct;
+      if (lpacked & 0x80) {
+        const lctSize = 3 * (1 << ((lpacked & 0x07) + 1));
+        ct = bytes.subarray(pos, pos + lctSize);
+        pos += lctSize;
+      }
+      const interlaced = (lpacked & 0x40) !== 0;
+      const minCodeSize = bytes[pos++];
+
+      const chunks = [];
+      let totalBytes = 0;
+      while (pos < bytes.length) {
+        const subLen = bytes[pos++];
+        if (subLen === 0) break;
+        chunks.push(bytes.subarray(pos, pos + subLen));
+        totalBytes += subLen;
+        pos += subLen;
+      }
+      const lzwData = new Uint8Array(totalBytes);
+      let offset = 0;
+      for (let c = 0; c < chunks.length; c++) {
+        lzwData.set(chunks[c], offset);
+        offset += chunks[c].length;
+      }
+
+      const pixelCount = fw * fh;
+      const indexStream = new Uint8Array(pixelCount);
+      const clearCode = 1 << minCodeSize;
+      const eoiCode = clearCode + 1;
+      let codeSize = minCodeSize + 1;
+      let codeMask = (1 << codeSize) - 1;
+      let nextCode = eoiCode + 1;
+      const prefix = new Int32Array(4096);
+      const suffix = new Uint8Array(4096);
+      const stack = new Uint8Array(4096);
+      for (let i = 0; i < clearCode; i++) {
+        prefix[i] = -1;
+        suffix[i] = i;
+      }
+
+      let bitBuf = 0;
+      let bitCount = 0;
+      let bytePos = 0;
+      let outPos = 0;
+      let oldCode = -1;
+      let firstChar = 0;
+
+      while (outPos < pixelCount) {
+        while (bitCount < codeSize && bytePos < lzwData.length) {
+          bitBuf |= lzwData[bytePos++] << bitCount;
+          bitCount += 8;
+        }
+        if (bitCount < codeSize) break;
+        const code = bitBuf & codeMask;
+        bitBuf >>= codeSize;
+        bitCount -= codeSize;
+
+        if (code === clearCode) {
+          codeSize = minCodeSize + 1;
+          codeMask = (1 << codeSize) - 1;
+          nextCode = eoiCode + 1;
+          oldCode = -1;
+          continue;
+        }
+        if (code === eoiCode) break;
+
+        let curCode = code;
+        let sp = 0;
+        if (curCode >= nextCode) {
+          if (oldCode === -1) break;
+          stack[sp++] = firstChar;
+          curCode = oldCode;
+        }
+        while (curCode >= clearCode) {
+          stack[sp++] = suffix[curCode];
+          curCode = prefix[curCode];
+        }
+        firstChar = suffix[curCode];
+        stack[sp++] = firstChar;
+
+        while (sp > 0 && outPos < pixelCount) {
+          indexStream[outPos++] = stack[--sp];
+        }
+
+        if (oldCode !== -1 && nextCode < 4096) {
+          prefix[nextCode] = oldCode;
+          suffix[nextCode] = firstChar;
+          nextCode++;
+          if (nextCode === (1 << codeSize) && codeSize < 12) {
+            codeSize++;
+            codeMask = (1 << codeSize) - 1;
+          }
+        }
+        oldCode = code;
+      }
+
+      if (disposal === 3) {
+        prevPixels.set(workPixels);
+      }
+
+      const rowMap = new Int32Array(fh);
+      if (interlaced) {
+        const starts = [0, 4, 2, 1];
+        const steps = [8, 8, 4, 2];
+        let rIdx = 0;
+        for (let p = 0; p < 4; p++) {
+          for (let y = starts[p]; y < fh; y += steps[p]) {
+            rowMap[rIdx++] = y;
+          }
+        }
+      } else {
+        for (let y = 0; y < fh; y++) rowMap[y] = y;
+      }
+
+      for (let sy = 0; sy < fh; sy++) {
+        const dy = top + rowMap[sy];
+        if (dy < 0 || dy >= height) continue;
+        for (let sx = 0; sx < fw; sx++) {
+          const dx = left + sx;
+          if (dx < 0 || dx >= width) continue;
+          const idx = indexStream[sy * fw + sx];
+          if (transFlag && idx === transIndex) continue;
+          const pOff = (dy * width + dx) * 4;
+          if (ct && idx * 3 + 2 < ct.length) {
+            workPixels[pOff] = ct[idx * 3];
+            workPixels[pOff + 1] = ct[idx * 3 + 1];
+            workPixels[pOff + 2] = ct[idx * 3 + 2];
+            workPixels[pOff + 3] = 255;
+          }
+        }
+      }
+
+      const fc = document.createElement('canvas');
+      fc.width = width;
+      fc.height = height;
+      fc.complete = true;
+      fc.naturalWidth = width;
+      fc.naturalHeight = height;
+      const fctx = fc.getContext('2d');
+      const imgData = new ImageData(new Uint8ClampedArray(workPixels), width, height);
+      fctx.putImageData(imgData, 0, 0);
+
+      const delaySec = Math.max(0.035, (delayCs || 10) * 0.01);
+      totalDurationSec += delaySec;
+      frames.push({
+        canvas: fc,
+        delaySec,
+        endTimeSec: totalDurationSec
+      });
+
+      if (disposal === 2) {
+        for (let sy = 0; sy < fh; sy++) {
+          const dy = top + sy;
+          if (dy < 0 || dy >= height) continue;
+          for (let sx = 0; sx < fw; sx++) {
+            const dx = left + sx;
+            if (dx < 0 || dx >= width) continue;
+            const pOff = (dy * width + dx) * 4;
+            workPixels[pOff] = 0;
+            workPixels[pOff + 1] = 0;
+            workPixels[pOff + 2] = 0;
+            workPixels[pOff + 3] = 0;
+          }
+        }
+      } else if (disposal === 3) {
+        workPixels.set(prevPixels);
+      }
+
+      disposal = 0;
+      transFlag = false;
+      delayCs = 10;
+    } else {
+      break;
+    }
+  }
+  if (frames.length <= 1) return null;
+  return { width, height, frames, totalDurationSec, currentFrameIdx: 0 };
+}
+
 function getAvatarImg(avatarPath) {
   const path = avatarPath || 'assets/avatars/mfx.gif';
+  if (avatarAnimCache.has(path)) {
+    const anim = avatarAnimCache.get(path);
+    return anim.frames[anim.currentFrameIdx].canvas;
+  }
   if (avatarImgCache.has(path)) return avatarImgCache.get(path);
   const img = new Image();
   avatarImgCache.set(path, img);
   img.onload = () => {
-    if (avatarCubeTexCache.has(path)) {
+    if (!avatarAnimCache.has(path) && avatarCubeTexCache.has(path)) {
       const entry = avatarCubeTexCache.get(path);
       drawAvatarCubeCanvas(entry.ctx, img);
       entry.tex.needsUpdate = true;
@@ -701,6 +941,26 @@ function getAvatarImg(avatarPath) {
     }
   };
   img.src = path;
+
+  if (path.toLowerCase().endsWith('.gif')) {
+    fetch(path)
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((buf) => {
+        if (!buf) return;
+        const anim = decodeGifFrames(buf);
+        if (!anim) return;
+        avatarAnimCache.set(path, anim);
+        if (avatarCubeTexCache.has(path)) {
+          const entry = avatarCubeTexCache.get(path);
+          drawAvatarCubeCanvas(entry.ctx, anim.frames[0].canvas);
+          entry.tex.needsUpdate = true;
+        }
+        if (activeHeroItem) {
+          updateHeroProdMonument(activeHeroItem);
+        }
+      })
+      .catch(() => {});
+  }
   return img;
 }
 
@@ -2657,6 +2917,73 @@ function onTransient(ev) {
 // ============================================================================
 let lastMs = performance.now();
 
+function updateAnimatedAvatars(nowSec, currentBar) {
+  if (avatarAnimCache.size === 0) return;
+  let heroCommentDirty = false;
+  let heroTopicDirty = false;
+  let heroKissesDirty = false;
+  const isStopBar = STOP_BAR_SET.has(currentBar);
+
+  for (const [path, anim] of avatarAnimCache.entries()) {
+    const loopT = nowSec % anim.totalDurationSec;
+    let fIdx = 0;
+    for (let i = 0; i < anim.frames.length; i++) {
+      if (loopT < anim.frames[i].endTimeSec) {
+        fIdx = i;
+        break;
+      }
+    }
+    if (fIdx === anim.currentFrameIdx) continue;
+    anim.currentFrameIdx = fIdx;
+    const frameCanvas = anim.frames[fIdx].canvas;
+
+    if (avatarCubeTexCache.has(path)) {
+      const entry = avatarCubeTexCache.get(path);
+      drawAvatarCubeCanvas(entry.ctx, frameCanvas);
+      entry.tex.needsUpdate = true;
+    }
+
+    if (!isStopBar && activeHeroItem) {
+      const heroAvPath = activeHeroItem.avatarPath || 'assets/avatars/mfx.gif';
+      if (activeHeroItem.sourceType === 'kisses') {
+        if (heroAvPath === path) heroKissesDirty = true;
+      } else {
+        if (heroAvPath === path) heroCommentDirty = true;
+        if (activeHeroItem.sourceType === 'topic') {
+          if (
+            heroAvPath === path ||
+            (activeHeroItem.threadContext && activeHeroItem.threadContext.some((p) => (p.avatarPath || 'assets/avatars/mfx.gif') === path))
+          ) {
+            heroTopicDirty = true;
+          }
+        }
+      }
+    }
+
+    if (arenaGroup.visible) {
+      for (let i = 0; i < arenaMonuments.length; i++) {
+        const g = arenaMonuments[i];
+        const mItem = g.userData.item;
+        if (mItem && (mItem.avatarPath || 'assets/avatars/mfx.gif') === path) {
+          drawProdCommentCanvas(g.userData.lc, g.userData.lctx, mItem);
+          g.userData.ltex.needsUpdate = true;
+        }
+      }
+    }
+  }
+
+  if (heroKissesDirty && activeHeroItem) {
+    drawKissesScreenCanvas(activeHeroItem);
+  }
+  if (heroCommentDirty && activeHeroItem) {
+    drawProdCommentCanvas(heroCommentCanvas, heroCommentCtx, activeHeroItem);
+    heroCommentTex.needsUpdate = true;
+  }
+  if (heroTopicDirty && activeHeroItem) {
+    drawTopicScreenCanvas(activeHeroItem);
+  }
+}
+
 function animate(nowMs) {
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, (nowMs - lastMs) / 1000);
@@ -2670,6 +2997,7 @@ function animate(nowMs) {
 
   const t = state.currentTime;
   const currentBar = Math.floor(t / BAR_SEC);
+  updateAnimatedAvatars(nowMs * 0.001, currentBar);
   const currentStep16Global = Math.floor(t / STEP16_SEC);
   const part = getPartForBar(currentBar);
   state.activePartId = part.id;
