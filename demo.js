@@ -390,6 +390,41 @@ audioEl.addEventListener('ended', () => {
   dom.startScreen.classList.remove('hidden');
 });
 
+// Keep the screen awake while the demo is playing
+let wakeLock = null;
+let wakeLockPending = false;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator) || wakeLock || wakeLockPending || document.visibilityState !== 'visible') return;
+  wakeLockPending = true;
+  try {
+    const lock = await navigator.wakeLock.request('screen');
+    if (audioEl.paused) {
+      lock.release();
+    } else {
+      wakeLock = lock;
+      lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+    }
+  } catch (_e) {
+    // Not allowed (e.g. low battery or permissions policy), carry on without it
+  }
+  wakeLockPending = false;
+}
+
+function releaseWakeLock() {
+  if (wakeLock) wakeLock.release();
+  wakeLock = null;
+}
+
+audioEl.addEventListener('play', requestWakeLock);
+audioEl.addEventListener('pause', releaseWakeLock);
+audioEl.addEventListener('ended', releaseWakeLock);
+
+// The browser drops the lock when the tab is hidden, so re-acquire it on return
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !audioEl.paused) requestWakeLock();
+});
+
 let audioCtx = null;
 let analyser = null;
 let freqData = new Uint8Array(128);
