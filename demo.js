@@ -617,7 +617,7 @@ function togglePlay() {
 // ============================================================================
 // 5. THREE.JS SCENE & POST-PROCESSING SHADER
 // ============================================================================
-// The scene is rendered into renderTarget, so MSAA goes there; the canvas only gets the full-screen post quad
+// No antialiasing: the hard pixel edges suit the look, and the canvas only draws the post quad anyway
 const renderer = new THREE.WebGLRenderer({
   antialias: false,
   powerPreference: 'high-performance'
@@ -628,8 +628,7 @@ dom.webglContainer.appendChild(renderer.domElement);
 
 let renderTarget = new THREE.WebGLRenderTarget(
   window.innerWidth * Math.min(window.devicePixelRatio, 2),
-  window.innerHeight * Math.min(window.devicePixelRatio, 2),
-  { samples: 4 }
+  window.innerHeight * Math.min(window.devicePixelRatio, 2)
 );
 
 const scene = new THREE.Scene();
