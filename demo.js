@@ -610,8 +610,9 @@ function togglePlay() {
 // ============================================================================
 // 5. THREE.JS SCENE & POST-PROCESSING SHADER
 // ============================================================================
+// The scene is rendered into renderTarget, so MSAA goes there; the canvas only gets the full-screen post quad
 const renderer = new THREE.WebGLRenderer({
-  antialias: true,
+  antialias: false,
   powerPreference: 'high-performance'
 });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -620,7 +621,8 @@ dom.webglContainer.appendChild(renderer.domElement);
 
 let renderTarget = new THREE.WebGLRenderTarget(
   window.innerWidth * Math.min(window.devicePixelRatio, 2),
-  window.innerHeight * Math.min(window.devicePixelRatio, 2)
+  window.innerHeight * Math.min(window.devicePixelRatio, 2),
+  { samples: 4 }
 );
 
 const scene = new THREE.Scene();
