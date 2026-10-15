@@ -385,6 +385,10 @@ let analyser = null;
 let freqData = new Uint8Array(128);
 let timeData = new Uint8Array(128);
 
+// A frame reaches the screen a few frames after it is computed (render, composite, vsync), so the
+// render loop looks this far ahead of the audio. Tuned by eye in Chrome on macOS.
+const DISPLAY_LATENCY = 0.05;
+
 // The song is decoded upfront and played through an AudioBufferSourceNode, and the demo clock is
 // derived from audioCtx.currentTime. HTMLMediaElement.currentTime is too coarse and drifts in Safari.
 class MusicPlayer extends EventTarget {
@@ -408,9 +412,19 @@ class MusicPlayer extends EventTarget {
 
   get currentTime() {
     if (this.paused) return this.offset;
-    // Subtract the output latency so visuals match what is heard rather than what was just rendered
-    const latency = audioCtx.outputLatency || audioCtx.baseLatency || 0;
-    return Math.min(this.buffer.duration, Math.max(0, audioCtx.currentTime - this.startedAt - latency));
+    return Math.min(this.buffer.duration, Math.max(0, this.heardContextTime() - this.startedAt));
+  }
+
+  // The audioCtx time of the sample coming out of the speakers right now. audioCtx.currentTime is
+  // ahead of that by the graph's buffering (baseLatency) plus the device latency (outputLatency).
+  heardContextTime() {
+    const now = performance.now();
+    const ts = audioCtx.getOutputTimestamp ? audioCtx.getOutputTimestamp() : null;
+    // Skip zeroed or stale timestamps, which some browsers return without a real output device
+    if (ts && ts.contextTime > 0 && now - ts.performanceTime < 250) {
+      return ts.contextTime + (now - ts.performanceTime) / 1000;
+    }
+    return audioCtx.currentTime - (audioCtx.baseLatency || 0) - (audioCtx.outputLatency || 0);
   }
 
   set currentTime(sec) {
@@ -3109,7 +3123,7 @@ function animate(nowMs) {
   lastMs = nowMs;
 
   if (state.isPlaying && state.hasStarted) {
-    state.currentTime = music.currentTime;
+    state.currentTime = Math.min(BEATMAP.duration, music.currentTime + DISPLAY_LATENCY);
   } else if (!state.hasStarted) {
     state.currentTime = (nowMs * 0.001) % 26.0;
   }
