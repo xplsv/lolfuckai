@@ -7,6 +7,13 @@ import {
 } from './data.js';
 import { IMPACT_GLYPHS } from './impact_font.js';
 
+// Canvas textures are drawn once at startup and don't redraw when a web font arrives, so wait for
+// Anton (the Impact fallback where Impact isn't installed). Don't hang if Google Fonts is unreachable.
+await Promise.race([
+  document.fonts.load('40px Anton').catch(() => {}),
+  new Promise((resolve) => setTimeout(resolve, 3000))
+]);
+
 // ============================================================================
 // 1. DERIVE THE 4 TOKENS ("LOL", 2ND WORD, "A", "I") FROM POUËT DATA
 // ============================================================================
@@ -1389,7 +1396,7 @@ function drawProdHeaderCanvas(canvas, ctx, item) {
 
   // Title (Prod Name, BBS Topic Title, or Valentine Kisses Dedication)
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 50px "Space Grotesk", Impact, sans-serif';
+  ctx.font = '900 50px Impact, Anton, sans-serif';
   ctx.textAlign = 'left';
   const titleStr = (item.prodName || 'POUËT PROD').toUpperCase().slice(0, 29);
   ctx.fillText(titleStr, 24, 116);
@@ -1454,10 +1461,10 @@ function drawProdCommentCanvas(canvas, ctx, item) {
   const commentText = isKisses ? (item.kissNote || item.comment || '') : (item.comment || '');
   if (commentText.length <= 42) {
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 54px "Space Grotesk", Impact, sans-serif';
+    ctx.font = '900 54px Impact, Anton, sans-serif';
     ctx.fillText(commentText, 26, 148, canvas.width - 52);
   } else {
-    ctx.font = 'bold 31px "Space Grotesk", Tahoma, sans-serif';
+    ctx.font = 'bold 31px Tahoma, sans-serif';
     const wrapped = wrapCanvasLines(ctx, commentText, canvas.width - 56, 4);
     for (let i = 0; i < wrapped.length; i++) {
       ctx.fillStyle = i === 0 ? '#ffffff' : '#ffdd00';
@@ -1555,7 +1562,7 @@ function drawKissesScreenCanvas(item) {
   // Handle & Single Quote on the Right (minimal, zero extra boxes or banners)
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffdd00';
-  ctx.font = '900 64px Impact, sans-serif';
+  ctx.font = '900 64px Impact, Anton, sans-serif';
   ctx.fillText(`@${(item.author || 'uncle-x').toUpperCase()}`, 354, 196);
 
   ctx.fillStyle = '#ffffff';
@@ -2076,7 +2083,7 @@ function drawStopBarGagScreen(barNum) {
   ctx.fillStyle = gag.stamp.bg;
   ctx.fillRect(24, 24, 976, 74);
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 40px Impact, sans-serif';
+  ctx.font = '900 40px Impact, Anton, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(gag.screenTitle, 512, 76, 940);
 
