@@ -316,6 +316,14 @@ function getChaosLevel(t) {
   return 0.22 + Math.pow(progress, 0.85) * 0.78;
 }
 
+// The song's climax (3:04 - 3:56) gets two looks of its own instead of more Part IX:
+// 1 = monochrome rectangle tunnel run (Bars 112..125), 2 = thumb swarm (Bars 126..143, MOD ALERT to SYSTEM OVERRIDE)
+function getClimaxPhase(barNum) {
+  if (barNum >= 112 && barNum < 126) return 1;
+  if (barNum >= 126 && barNum < 144) return 2;
+  return 0;
+}
+
 const BOM_EVENTS = [];
 for (const barNum of INTRO_BOM_BARS) {
   const barStart = barNum * BAR_SEC;
@@ -366,6 +374,15 @@ const state = {
   stampHammerEnv: 0,
   glitchTear: 0,
   invertEnv: 0,
+  thumbBurstEnv: 0,
+  thumbsUpPopEnv: 0,
+  tunnelFlashEnv: 0,
+  climaxBank: 0,
+  swarmShape: 'lol',
+  laserPattern: 0,
+  shaftOffset: 0,
+  camKickPitch: 0,
+  camKickYaw: 0,
   subLevel: 0,
   midLevel: 0,
   highLevel: 0,
@@ -662,6 +679,8 @@ const postUniforms = {
   uZoomPunch: { value: 0.0 },
   uInvert: { value: 0.0 },
   uOverdrive: { value: 0.0 },
+  uMono: { value: 0.0 },
+  uRadial: { value: 0.0 },
   uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
 };
 
@@ -682,6 +701,8 @@ const postMat = new THREE.ShaderMaterial({
     uniform float uZoomPunch;
     uniform float uInvert;
     uniform float uOverdrive;
+    uniform float uMono;
+    uniform float uRadial;
     uniform vec2 uResolution;
     varying vec2 vUv;
 
@@ -712,6 +733,16 @@ const postMat = new THREE.ShaderMaterial({
       float b = texture2D(tDiffuse, clamp(uv - shift, 0.001, 0.999)).b;
       vec3 col = vec3(r, g, b);
 
+      // Radial zoom blur toward the centre for speed
+      if (uRadial > 0.001) {
+        vec3 acc = col;
+        for (int i = 1; i < 8; i++) {
+          float s = 1.0 - uRadial * float(i) / 7.0;
+          acc += texture2D(tDiffuse, clamp(0.5 + (uv - 0.5) * s, 0.001, 0.999)).rgb;
+        }
+        col = acc / 8.0;
+      }
+
       float scan = sin(uv.y * uResolution.y * 1.35 + uTime * 16.0) * 0.5 + 0.5;
       col *= 1.0 - scan * (0.13 + uOverdrive * 0.12);
 
@@ -724,6 +755,14 @@ const postMat = new THREE.ShaderMaterial({
         float edgeDist = smoothstep(0.12, 0.52, r2);
         vec3 neonRim = mix(vec3(1.0, 0.0, 0.38), vec3(0.0, 0.94, 1.0), step(0.5, fract(uTime * 8.0)));
         col += neonRim * edgeDist * uOverdrive * 0.55;
+      }
+
+      // High-contrast black & white that only lets strong reds through
+      if (uMono > 0.01) {
+        float luma = smoothstep(0.03, 0.8, dot(col, vec3(0.299, 0.587, 0.114)));
+        float redness = clamp((col.r - max(col.g, col.b)) * 2.5, 0.0, 1.0);
+        vec3 mono = mix(vec3(luma), vec3(min(1.0, col.r * 1.2), 0.02, 0.06), redness);
+        col = mix(col, mono, uMono);
       }
 
       if (uInvert > 0.01) {
@@ -2441,6 +2480,241 @@ const tornadoInstanced = new THREE.InstancedMesh(tornadoGeo, tornadoMat, TORNADO
 tornadoInstanced.visible = false;
 scene.add(tornadoInstanced);
 
+// EFFECT E: Pouët thumbs for the climax: swirling down the rectangle tunnel, then swarming into shapes (3:04 - 3:56)
+// The SVGs are only 16px, so rasterize them big on a canvas instead of letting the loader do it at 16px
+function makeThumbTexture(url) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const img = new Image();
+  img.onload = () => {
+    canvas.getContext('2d').drawImage(img, 0, 0, 128, 128);
+    tex.needsUpdate = true;
+  };
+  img.src = url;
+  return tex;
+}
+
+const THUMB_DOWN_COUNT = 1440;
+const THUMB_UP_COUNT = 96;
+const THUMB_TOTAL = THUMB_DOWN_COUNT + THUMB_UP_COUNT;
+
+// Thumb swarm for the second half of the climax: every thumb springs to its slot in the current shape
+const swarmPos = new Float32Array(THUMB_TOTAL * 3);
+// Far enough back that even the burst stays behind the 3D words
+const SWARM_CENTER = new THREE.Vector3(0, 0.3, -8.0);
+// How far the camera (and the 3D words with it) moves in toward the swarm, so the letters fill the frame
+const SWARM_DOLLY = 6.0;
+const GOLDEN_ANGLE = 2.39996;
+
+function makeFormation(fn) {
+  const out = new Float32Array(THUMB_TOTAL * 3);
+  const p = new THREE.Vector3();
+  for (let i = 0; i < THUMB_TOTAL; i++) {
+    fn(i, i / THUMB_TOTAL, p);
+    out[i * 3] = p.x;
+    out[i * 3 + 1] = p.y;
+    out[i * 3 + 2] = p.z;
+  }
+  return out;
+}
+
+// Swarm letters: rendered in bold Arial and filled evenly with thumbs
+const SWARM_FONT = 'Arial, Helvetica, sans-serif';
+function makeTextFormation(text, capHeight) {
+  const size = 200;
+  const capPx = size * 0.72; // Arial's cap height
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.font = `bold ${size}px ${SWARM_FONT}`;
+  canvas.width = Math.ceil(ctx.measureText(text).width) + 40;
+  canvas.height = 256;
+  ctx.font = `bold ${size}px ${SWARM_FONT}`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(text, canvas.width / 2, (canvas.height + capPx) / 2);
+
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const pts = [];
+  for (let y = 0; y < canvas.height; y += 2) {
+    for (let x = 0; x < canvas.width; x += 2) {
+      if (data[(y * canvas.width + x) * 4 + 3] > 128) pts.push(x, y);
+    }
+  }
+  const n = pts.length / 2;
+  const scale = capHeight / capPx;
+  // Evenly spaced picks through the lit pixels so the thumbs cover the glyphs uniformly
+  return makeFormation((i, u, p) => {
+    const k = Math.floor(u * n) * 2;
+    p.set(
+      (pts[k] - canvas.width / 2) * scale,
+      -(pts[k + 1] - canvas.height / 2) * scale,
+      ((i * 0.37) % 1 - 0.5) * 1.0
+    );
+  });
+}
+
+const swarmFormations = {
+  torus: makeFormation((i, u, p) => {
+    const a = u * Math.PI * 2;
+    const b = i * GOLDEN_ANGLE;
+    const r = 8.0 + Math.cos(b) * 2.6;
+    p.set(Math.cos(a) * r, Math.sin(b) * 2.6, Math.sin(a) * r);
+  }),
+  helix: makeFormation((i, u, p) => {
+    const strand = i % 2;
+    const y = (u - 0.5) * 20.0;
+    const a = y * 0.75 + strand * Math.PI;
+    p.set(Math.cos(a) * 5.5, y, Math.sin(a) * 5.5);
+  }),
+  heart: makeFormation((i, u, p) => {
+    const a = i * GOLDEN_ANGLE;
+    const fill = Math.sqrt((i * 0.6180339) % 1);
+    const x = 16 * Math.pow(Math.sin(a), 3);
+    const y = 13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a);
+    p.set(x * 0.55 * fill, (y + 2) * 0.55 * fill, ((i * 0.37) % 1 - 0.5) * 2.0);
+  }),
+  lol: makeTextFormation('LOL', 7.5),
+  f: makeTextFormation('F', 11.5),
+  u: makeTextFormation('U', 11.5),
+  c: makeTextFormation('C', 11.5),
+  k: makeTextFormation('K', 11.5),
+  a: makeTextFormation('A', 11.5),
+  i: makeTextFormation('I', 11.5)
+};
+// Every 2-bar pattern spells FUCK AI one letter at a time: F U C K on the 4 BOM hits, A and I on the first two
+// answer slams, then a torus or a helix on the third
+const SWARM_WORD_SHAPES = ['f', 'u', 'c', 'k'];
+// Shapes that read from the front stay facing the camera; the rest spin
+const SWARM_FLAT_SHAPES = new Set(['lol', 'f', 'u', 'c', 'k', 'a', 'i', 'heart']);
+// Picked to read on the swarm half's red background
+const SWARM_HIT_COLORS = [0xffffff, 0xffdd33, 0x33eeff, 0xffffff].map((c) => new THREE.Color(c));
+const SWARM_WHITE = new THREE.Color(0xffffff);
+const SWARM_HEART_PINK = new THREE.Color(0xffd0e4);
+const thumbGeo = new THREE.PlaneGeometry(1.7, 1.7);
+const thumbsDownInstanced = new THREE.InstancedMesh(
+  thumbGeo,
+  new THREE.MeshBasicMaterial({
+    map: makeThumbTexture('assets/sucks.svg'),
+    alphaTest: 0.5,
+    side: THREE.DoubleSide
+  }),
+  THUMB_DOWN_COUNT
+);
+const thumbsUpInstanced = new THREE.InstancedMesh(
+  thumbGeo,
+  new THREE.MeshBasicMaterial({ map: makeThumbTexture('assets/rulez.svg'), alphaTest: 0.5, side: THREE.DoubleSide }),
+  THUMB_UP_COUNT
+);
+const thumbsGroup = new THREE.Group();
+for (const mesh of [thumbsDownInstanced, thumbsUpInstanced]) {
+  mesh.frustumCulled = false;
+  thumbsGroup.add(mesh);
+}
+thumbsGroup.visible = false;
+scene.add(thumbsGroup);
+
+// EFFECT F: Spiralling tunnel of rectangle frames (like the intro portals) for the first half of the climax (3:04 - 3:27)
+const RECT_TUNNEL_COUNT = 30;
+const RECT_TUNNEL_SPACING = 3.6;
+const rectTunnelWhiteMat = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.92,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const RECT_FLASH_RED = new THREE.Color(0xff1a1a);
+const rectTunnelGroup = new THREE.Group();
+const rectFrames = [];
+for (let i = 0; i < RECT_TUNNEL_COUNT; i++) {
+  const mat = i % 3 === 0 ? portalRedMat : rectTunnelWhiteMat;
+  const frame = new THREE.Group();
+  const topBar = new THREE.Mesh(portalHBarGeo, mat);
+  topBar.position.set(0, 6.5, 0);
+  const botBar = new THREE.Mesh(portalHBarGeo, mat);
+  botBar.position.set(0, -6.5, 0);
+  const leftBar = new THREE.Mesh(portalVBarGeo, mat);
+  leftBar.position.set(-9.0, 0, 0);
+  const rightBar = new THREE.Mesh(portalVBarGeo, mat);
+  rightBar.position.set(9.0, 0, 0);
+  frame.add(topBar, botBar, leftBar, rightBar);
+  rectTunnelGroup.add(frame);
+  rectFrames.push(frame);
+}
+rectTunnelGroup.visible = false;
+
+// In the swarm half the shaft is solid black against the red background (black can't be additive),
+// drawn first and without depth so it stays a backdrop and never slices through the swarm
+const rectTunnelBlackMat = new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false, depthWrite: false });
+let rectTunnelIsBlack = false;
+function setRectTunnelBlack(black) {
+  if (black === rectTunnelIsBlack) return;
+  rectTunnelIsBlack = black;
+  for (let i = 0; i < RECT_TUNNEL_COUNT; i++) {
+    const mat = black ? rectTunnelBlackMat : (i % 3 === 0 ? portalRedMat : rectTunnelWhiteMat);
+    for (const bar of rectFrames[i].children) {
+      bar.material = mat;
+      bar.renderOrder = black ? -1 : 0;
+    }
+  }
+}
+scene.add(rectTunnelGroup);
+
+// Thumb swarm extras: white shockwave rings behind the swarm on the big hits
+const SHOCKWAVE_COUNT = 6;
+const shockwaveGeo = new THREE.RingGeometry(0.92, 1.0, 96);
+const shockwaves = [];
+for (let i = 0; i < SHOCKWAVE_COUNT; i++) {
+  const ring = new THREE.Mesh(shockwaveGeo, new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }));
+  ring.visible = false;
+  ring.userData.bornAt = -10;
+  scene.add(ring);
+  shockwaves.push(ring);
+}
+let shockwaveCursor = 0;
+function spawnShockwave(t) {
+  shockwaves[shockwaveCursor].userData.bornAt = t;
+  shockwaveCursor = (shockwaveCursor + 1) % SHOCKWAVE_COUNT;
+}
+
+// ...and a laser show cutting through the letters, switching pattern on every BOM hit and answer slam:
+// crossing fans, a converging ring, a scanner, a twisting cage and a starburst
+const SWARM_LASER_COUNT = 144; // Divisible by 3 for the fans pattern's three emitters
+const swarmLaserGeo = new THREE.BoxGeometry(0.7, 0.7, 1.0);
+swarmLaserGeo.translate(0, 0, 0.5); // Extends along +z from its origin, so lookAt() aims it
+const swarmLasers = new THREE.InstancedMesh(
+  swarmLaserGeo,
+  new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false }),
+  SWARM_LASER_COUNT
+);
+swarmLasers.frustumCulled = false;
+swarmLasers.visible = false;
+scene.add(swarmLasers);
+const SWARM_LASER_EMITTERS = [new THREE.Vector3(-26, -15, -2), new THREE.Vector3(26, -15, -2), new THREE.Vector3(0, 0.3, -60)];
+const swarmLaserTarget = new THREE.Vector3();
+const SWARM_LASER_PATTERN_COUNT = 5;
+function nextLaserPattern() {
+  state.laserPattern = (state.laserPattern + 1) % SWARM_LASER_PATTERN_COUNT;
+}
+
+// Path of the rectangle tunnel: straight at the camera, curving away more the further ahead it goes
+const tunnelBend = new THREE.Vector2();
+function getTunnelBend(z, t) {
+  const d = Math.max(0, 12.6 - z);
+  const k = d * d * 0.0022;
+  return tunnelBend.set(Math.sin(z * 0.04 + t * 0.8) * k, Math.cos(z * 0.03 + t * 0.6) * k * 0.7);
+}
+
 // 80 Smooth 3D Extruded Hearts for Part X ("SENDING KISSES TO THE MAIN HATERS")
 const HEART_COUNT = 80;
 const heartShape = new THREE.Shape();
@@ -2809,8 +3083,27 @@ function triggerBomHit(bomEv) {
     // PART IX (2:38 - 3:57): TOTAL OVERDRIVE — Invert strobe, stamp slam & avatar swap on EVERY BOM hit!
     repositionStampHammer();
     state.stampHammerEnv = 1.45;
-    state.invertEnv = (hitIdx === 1 || hitIdx === 3) ? 1.28 : 0.92;
-    state.glitchTear = 0.95 + (hitIdx === 3 ? 0.45 : 0.25);
+    if (getClimaxPhase(bomEv.bar)) {
+      // Climax: flash only on the 4th hit so it lands, bank the tunnel run, burst the thumb swarm
+      state.invertEnv = hitIdx === 3 ? 1.0 : 0;
+      state.glitchTear = hitIdx === 3 ? 0.6 : 0.2;
+      state.climaxBank = [0, 1, -1, 0][hitIdx];
+      state.camKickPitch = [0.1, -0.12, 0.14, -0.08][hitIdx];
+      state.camKickYaw = [-0.14, 0.16, 0.08, -0.12][hitIdx];
+      state.thumbBurstEnv = hitIdx === 3 ? 1.6 : 1.0;
+      state.swarmShape = SWARM_WORD_SHAPES[hitIdx];
+      if (getClimaxPhase(bomEv.bar) === 2) {
+        spawnShockwave(bomEv.t);
+        nextLaserPattern();
+      }
+      if (hitIdx === 3) {
+        state.thumbsUpPopEnv = 1.0;
+        state.tunnelFlashEnv = 1.0;
+      }
+    } else {
+      state.invertEnv = (hitIdx === 1 || hitIdx === 3) ? 1.28 : 0.92;
+      state.glitchTear = 0.95 + (hitIdx === 3 ? 0.45 : 0.25);
+    }
 
     const rapidHater = HATER_KISSES[(bomEv.bar * 4 + hitIdx) % HATER_KISSES.length];
     const rapidTex = getAvatarCubeTex(rapidHater.avatarPath);
@@ -2894,7 +3187,16 @@ function onStep16Change(globalStep16, t) {
     state.kickEnv = Math.max(state.kickEnv, 1.0);
     state.stampHammerEnv = 1.1;
     const isPart9Odd = (barNum >= 96 && barNum < 144);
-    if (isPart9Odd) {
+    if (getClimaxPhase(barNum)) {
+      state.climaxBank = stepInBar === 1 ? -1 : (stepInBar === 7 ? 1 : 0);
+      state.thumbBurstEnv = Math.max(state.thumbBurstEnv, 0.8);
+      if (stepInBar === 13) state.invertEnv = 0.8;
+      if (getClimaxPhase(barNum) === 2) {
+        spawnShockwave(t);
+        nextLaserPattern();
+      }
+      state.swarmShape = stepInBar === 1 ? 'a' : (stepInBar === 7 ? 'i' : (barNum % 4 === 1 ? 'torus' : 'helix'));
+    } else if (isPart9Odd) {
       state.invertEnv = 1.15;
       state.glitchTear = 0.95;
     }
@@ -2928,7 +3230,8 @@ function onStep16Change(globalStep16, t) {
   const isChillBar = (barNum >= 16 && barNum < 32) || (barNum >= 80 && barNum < 96);
   if (!isChillBar && (stepInBar === 4 || stepInBar === 10 || stepInBar === 14)) {
     state.snareEnv = Math.max(state.snareEnv, 0.75);
-    if (barNum >= 96 && barNum < 144) {
+    // In the climax, hold the snare flashes back until the last 4 bars before the outro break
+    if (barNum >= 96 && barNum < 144 && (!getClimaxPhase(barNum) || (barNum >= 138 && barNum < 142))) {
       state.invertEnv = Math.max(state.invertEnv, 0.72);
       state.glitchTear = Math.max(state.glitchTear, 0.65);
     }
@@ -3184,6 +3487,12 @@ function animate(nowMs) {
   state.stampHammerEnv = Math.max(0, state.stampHammerEnv - dt * 4.5);
   state.glitchTear = Math.max(0, state.glitchTear - dt * 5.8);
   state.invertEnv = Math.max(0, state.invertEnv - dt * 6.5);
+  state.thumbBurstEnv = Math.max(0, state.thumbBurstEnv - dt * 3.5);
+  state.thumbsUpPopEnv = Math.max(0, state.thumbsUpPopEnv - dt * 1.2);
+  state.tunnelFlashEnv = Math.max(0, state.tunnelFlashEnv - dt * 2.5);
+  state.climaxBank = THREE.MathUtils.lerp(state.climaxBank, 0, dt * 1.5);
+  state.camKickPitch = THREE.MathUtils.lerp(state.camKickPitch, 0, dt * 4.0);
+  state.camKickYaw = THREE.MathUtils.lerp(state.camKickYaw, 0, dt * 4.0);
 
   // --------------------------------------------------------------------------
   // TOGGLE DEEPLY INTEGRATED 3D STAGE ARCHITECTURES PER PART (PARTS 1 - 10)
@@ -3197,6 +3506,27 @@ function animate(nowMs) {
   canyonGroup.visible = (part.id === 5 || part.id === 7 || part.id === 9 || part.id === 10);
   tornadoInstanced.visible = (part.id === 9 || part.id === 10);
   heartInstanced.visible = (part.id === 10);
+
+  // Climax: strip Part IX's stage down to one idea per half
+  const climaxPhase = getClimaxPhase(currentBar);
+  if (climaxPhase) {
+    outerCubesMesh.visible = false;
+    portalGroup.visible = false;
+    eqInstanced.visible = false;
+    copperBoingGroup.visible = false;
+    glenzMetaballGroup.visible = false;
+    tornadoInstanced.visible = false;
+    arenaGroup.visible = false;
+    canyonGroup.visible = false;
+    ringLine.visible = (climaxPhase === 2);
+    heroMonument.visible = false;
+  }
+  heroCubesMesh.visible = (climaxPhase === 0);
+  thumbsGroup.visible = (climaxPhase !== 0);
+  // The rectangle tunnel carries on as a rising shaft around the thumb swarm, tinted with the hit colours
+  rectTunnelGroup.visible = (climaxPhase !== 0);
+  setRectTunnelBlack(climaxPhase === 2);
+  if (climaxPhase === 0) portalRedMat.opacity = 0.92; // Shared with the intro portals
 
   // --------------------------------------------------------------------------
   // ANIMATE SMOOTH 3D EXTRUDED IMPACT TYPOGRAPHY (CLOSE & IMPACTFUL!)
@@ -3241,6 +3571,8 @@ function animate(nowMs) {
         }
       }
 
+      if (climaxPhase === 2) word3DMesh.position.z -= SWARM_DOLLY;
+
       for (let i = 0; i < activeWordLetters.length; i++) {
         const ltr = activeWordLetters[i];
         const blinkWave = state.word3DCrazyBlink ? Math.sin(i * 1.3 + t * 42.0) * 0.24 : 0;
@@ -3265,18 +3597,20 @@ function animate(nowMs) {
   // ANIMATE GIANT CENTERPIECE 3D POUËT PROD MONUMENT & 3D STAMP HAMMER
   // --------------------------------------------------------------------------
   if (heroMonument.visible) {
-    // Keep scale grounded at z = -1.5 so the demo screenshot never lunges toward the camera
-    const monScale = 1.0 + state.kickEnv * 0.035;
-    heroMonument.scale.setScalar(monScale);
-    heroMonument.rotation.y = Math.sin(t * 1.4) * (0.06 + chaos * 0.08);
-    heroMonument.rotation.z = Math.sin(t * 2.5) * 0.02 * state.kickEnv;
+    // Keep scale grounded at z = -1.5 so the demo screenshot never lunges toward the camera.
+    // In the thumb swarm half the screen is hidden anyway; keep it still if it ever shows.
+    const monSway = climaxPhase === 2 ? 0 : 1;
+    heroMonument.scale.setScalar(1.0 + state.kickEnv * 0.035 * monSway);
+    heroMonument.rotation.y = Math.sin(t * 1.4) * (0.06 + chaos * 0.08) * monSway;
+    heroMonument.rotation.z = Math.sin(t * 2.5) * 0.02 * state.kickEnv * monSway;
 
     leftPylon.rotation.set(t * 2.5, t * 3.2, state.kickEnv);
     rightPylon.rotation.set(-t * 2.5, -t * 3.2, -state.kickEnv);
 
-    stamp3DHammer.position.z = 0.75 + state.stampHammerEnv * 2.2;
-    stamp3DHammer.scale.setScalar(1.0 + state.stampHammerEnv * 0.35);
-    stamp3DHammer.rotation.z = stampBaseRotZ + Math.sin(t * 20) * 0.08 * state.stampHammerEnv;
+    const stampEnv = state.stampHammerEnv * monSway;
+    stamp3DHammer.position.z = 0.75 + stampEnv * 2.2;
+    stamp3DHammer.scale.setScalar(1.0 + stampEnv * 0.35);
+    stamp3DHammer.rotation.z = stampBaseRotZ + Math.sin(t * 20) * 0.08 * stampEnv;
   }
 
   // --------------------------------------------------------------------------
@@ -3463,6 +3797,172 @@ function animate(nowMs) {
     tornadoInstanced.instanceMatrix.needsUpdate = true;
   }
 
+  if (rectTunnelGroup.visible) {
+    // Frames rush at the camera along the bending path, twisted into a spiral, flashing red on the 4th BOM hit
+    const tunnelTint = climaxPhase === 2 ? SWARM_HIT_COLORS[state.activeHitIdx] : SWARM_WHITE;
+    rectTunnelWhiteMat.color.copy(tunnelTint).lerp(RECT_FLASH_RED, state.tunnelFlashEnv);
+    // Dimmer behind the swarm so the shapes stay readable
+    rectTunnelWhiteMat.opacity = climaxPhase === 2 ? 0.35 : 0.92;
+    portalRedMat.opacity = rectTunnelWhiteMat.opacity;
+    state.shaftOffset = (state.shaftOffset + dt * (9.0 + state.kickEnv * 30.0)) % 10000;
+    for (let i = 0; i < RECT_TUNNEL_COUNT; i++) {
+      const f = rectFrames[i];
+      const s = 1.0 + state.kickEnv * 0.12 + ((freqData[(i * 2) % 64] || 0) / 255) * 0.15;
+      if (climaxPhase === 2) {
+        // Thumb swarm: the frames lie flat and rise from bottom to top around the swarm, surging on kicks,
+        // twisted into a spiral that spins around it
+        const spacing = 1.7;
+        const len = RECT_TUNNEL_COUNT * spacing;
+        const y = ((i * spacing + state.shaftOffset) % len) - len * 0.5;
+        f.position.set(SWARM_CENTER.x, SWARM_CENTER.y + y, SWARM_CENTER.z);
+        f.rotation.set(-Math.PI * 0.5, 0, y * 0.12 + t * 0.9 + state.snareEnv * 0.3);
+        f.scale.set(s * 1.1, s * 1.1, 1);
+      } else {
+        const len = RECT_TUNNEL_COUNT * RECT_TUNNEL_SPACING;
+        const z = ((i * RECT_TUNNEL_SPACING + (t - 112 * BAR_SEC) * 30.0) % len) - (len - 14.0);
+        const bend = getTunnelBend(z, t);
+        f.position.set(bend.x, bend.y, z);
+        f.rotation.set(0, 0, z * 0.035 + t * 0.6 + state.snareEnv * 0.2);
+        f.scale.set(s, s, 1);
+      }
+    }
+  }
+
+  for (const ring of shockwaves) {
+    const age = t - ring.userData.bornAt;
+    ring.visible = climaxPhase === 2 && age >= 0 && age < 0.7;
+    if (!ring.visible) continue;
+    const k = age / 0.7;
+    ring.position.set(SWARM_CENTER.x, SWARM_CENTER.y, SWARM_CENTER.z - 1.0);
+    ring.quaternion.copy(camera.quaternion);
+    ring.scale.setScalar(4.0 + (1 - Math.pow(1 - k, 3)) * 26.0);
+    ring.material.opacity = 1.0 - k;
+  }
+
+  swarmLasers.visible = (climaxPhase === 2);
+  if (swarmLasers.visible) {
+    const pattern = state.laserPattern;
+    const c = SWARM_CENTER;
+    const thick = 1.0 + state.kickEnv * 0.6;
+    const strobe = currentBar >= 138 && currentBar < 142;
+    for (let i = 0; i < SWARM_LASER_COUNT; i++) {
+      const u = i / SWARM_LASER_COUNT;
+      const g = ((i * 0.6180339) % 1); // Stable per-beam random
+      if (pattern === 0) {
+        // Crossing fans from the bottom corners (in front of the swarm, angled back through it), plus radial rays
+        const e = i % 3;
+        const k = Math.floor(i / 3) / (SWARM_LASER_COUNT / 3 - 1) - 0.5;
+        const origin = SWARM_LASER_EMITTERS[e];
+        dummy.position.copy(origin);
+        if (e < 2) {
+          const base = e === 0 ? Math.PI * 0.25 : Math.PI * 0.75;
+          const phi = base + k * 1.5 * (1.0 + state.kickEnv * 0.35) + Math.sin(t * 1.3 + e * Math.PI) * 0.6;
+          swarmLaserTarget.set(origin.x + Math.cos(phi) * 80, origin.y + Math.sin(phi) * 80, origin.z - 12);
+        } else {
+          const phi = (k + 0.5) * Math.PI * 2 + t * 0.5;
+          const r = 5.0 + g * 24.0 + state.kickEnv * 5.0;
+          swarmLaserTarget.set(Math.cos(phi) * r, Math.sin(phi) * r * 0.7, 12);
+        }
+      } else if (pattern === 1) {
+        // Converge: a big ring around the camera, every beam aimed at a point circling just behind the letter
+        const a = u * Math.PI * 2 + t * 0.8;
+        dummy.position.set(Math.cos(a) * 34, Math.sin(a) * 22, -2.0);
+        // Spread over a small ring so the thick beams don't all pile up on one point
+        swarmLaserTarget.set(c.x + Math.cos(t * 3.0) * 3.0 + Math.cos(a) * 4.0, c.y + Math.sin(t * 3.0) * 2.0 + Math.sin(a) * 3.0, c.z - 6.0);
+      } else if (pattern === 2) {
+        // Scanner: two sheets of near horizontal beams from the left and right, sweeping up and down, crossing
+        const side = i % 2 === 0 ? -1 : 1;
+        const y = (g - 0.5) * 32.0;
+        const sweep = Math.sin(t * 2.4 + side) * 8.0;
+        dummy.position.set(side * 45, y + sweep, c.z + 6.0);
+        swarmLaserTarget.set(-side * 45, y - sweep * 0.6, c.z - 10.0);
+      } else if (pattern === 3) {
+        // Cage: a twisting helix of vertical beams rotating around the swarm
+        const a = u * Math.PI * 2 + t * 1.6;
+        const r = 9.0 + (i % 3) * 1.5;
+        dummy.position.set(c.x + Math.cos(a) * r, -22, c.z + Math.sin(a) * r);
+        swarmLaserTarget.set(c.x + Math.cos(a + 1.4) * r, 22, c.z + Math.sin(a + 1.4) * r);
+      } else {
+        // Starburst: rays exploding out of the letter, rotating, stopping well short of the camera
+        const a = u * Math.PI * 2 - t * 0.9;
+        const r = 10.0 + g * 22.0 + state.kickEnv * 4.0;
+        dummy.position.set(c.x + Math.cos(a) * 5.0, c.y + Math.sin(a) * 3.5, c.z - 3.0); // A ring, not a point, so they don't pile up
+        swarmLaserTarget.set(Math.cos(a) * r, c.y + Math.sin(a) * r * 0.7, -1.0);
+      }
+      dummy.lookAt(swarmLaserTarget);
+      // The scanner's sheets span the whole screen, so it only uses half the beams or they'd wash it out
+      const on = (!strobe || ((currentStep16Global + i) % 2 === 0)) && !(pattern === 2 && i % 4 >= 2);
+      // Converge and starburst stop at their target; the others run on past it, off screen
+      const len = dummy.position.distanceTo(swarmLaserTarget) + (pattern === 1 || pattern === 4 ? 0 : 40);
+      dummy.scale.set(on ? thick : 0, on ? thick : 0, on ? len : 0);
+      dummy.updateMatrix();
+      swarmLasers.setMatrixAt(i, dummy.matrix);
+    }
+    swarmLasers.instanceMatrix.needsUpdate = true;
+  }
+
+  if (thumbsGroup.visible) {
+    // In the rectangle tunnel the thumbs swirl inside the frames, following its bend, clear of the words.
+    // In the second half they swarm into a new shape on every BOM hit.
+    // The thumbs-up get popped on every 4th BOM hit and slowly grow back.
+    // Swarm shape: it opens by spelling LOL through the MOD ALERT break, then spells FUCK AI one
+    // letter per BOM hit and answer slam (with a torus or helix to close each pattern), and forms a heart for the love-mode break
+    const swarmShapeNow = currentBar >= 142 ? 'heart' : (currentBar < 128 ? 'lol' : state.swarmShape);
+    const swarmTarget = swarmFormations[swarmShapeNow] || swarmFormations.cloud;
+    const swarmSpin = SWARM_FLAT_SHAPES.has(swarmShapeNow) ? Math.sin(t * 1.5) * 0.25 : t * 0.7;
+    const spinCos = Math.cos(swarmSpin);
+    const spinSin = Math.sin(swarmSpin);
+    const swarmTilt = SWARM_FLAT_SHAPES.has(swarmShapeNow) ? 0 : 0.55;
+    const tiltCos = Math.cos(swarmTilt);
+    const tiltSin = Math.sin(swarmTilt);
+    const swarmGrow = 1.0 + state.thumbBurstEnv * 0.18 + (swarmShapeNow === 'heart' ? state.kickEnv * 0.08 : 0);
+    const swarmFollow = 1.0 - Math.exp(-dt * 9.0);
+    const swarmTint = climaxPhase !== 2
+      ? SWARM_WHITE
+      : (swarmShapeNow === 'heart' ? SWARM_HEART_PINK : (currentBar < 128 ? SWARM_WHITE : SWARM_HIT_COLORS[state.activeHitIdx]));
+    thumbsDownInstanced.material.color.lerp(swarmTint, swarmFollow);
+    const flow = climaxPhase === 1 ? (t - 112 * BAR_SEC) * 42.0 : (t - 126 * BAR_SEC) * 24.0;
+    for (let i = 0; i < THUMB_DOWN_COUNT + THUMB_UP_COUNT; i++) {
+      const isUp = i >= THUMB_DOWN_COUNT;
+      const z = ((i * 0.83 + flow) % 100) - 86;
+      if (climaxPhase === 1) {
+        const a = i * 2.39996 + t * 0.8 * (i % 2 === 0 ? 1 : -1);
+        const rad = 3.8 + (i % 7) * 0.75 + state.thumbBurstEnv * 1.5;
+        const bend = getTunnelBend(z, t);
+        dummy.position.set(Math.cos(a) * rad * 1.25 + bend.x, Math.sin(a) * rad * 0.8 + bend.y, z);
+        dummy.quaternion.copy(camera.quaternion);
+        dummy.rotateZ(t * (3.0 + (i % 5)) * (i % 2 === 0 ? 1 : -1) + i);
+      } else {
+        // Thumb swarm: spring to this thumb's slot in the current shape
+        const k3 = i * 3;
+        const tx = swarmTarget[k3];
+        const ty = swarmTarget[k3 + 1];
+        const tz = swarmTarget[k3 + 2];
+        // Spin around Y, then tilt toward the camera so rings and discs aren't seen edge-on
+        const sx = tx * spinCos + tz * spinSin;
+        const sz = tz * spinCos - tx * spinSin;
+        const wy = ty * tiltCos - sz * tiltSin;
+        const wz = ty * tiltSin + sz * tiltCos;
+        swarmPos[k3] += (SWARM_CENTER.x + sx * swarmGrow - swarmPos[k3]) * swarmFollow;
+        swarmPos[k3 + 1] += (SWARM_CENTER.y + wy * swarmGrow - swarmPos[k3 + 1]) * swarmFollow;
+        swarmPos[k3 + 2] += (SWARM_CENTER.z + wz * swarmGrow - swarmPos[k3 + 2]) * swarmFollow;
+        dummy.position.set(swarmPos[k3], swarmPos[k3 + 1], swarmPos[k3 + 2]);
+        dummy.quaternion.copy(camera.quaternion);
+        dummy.rotateZ(Math.sin(t * 3.0 + i) * 0.5);
+      }
+      // The tunnel run only uses a quarter of them, or they clump into noise at the vanishing point
+      const hidden = climaxPhase === 1 && i % 4 !== 0;
+      const swarmSize = climaxPhase === 2 ? 0.6 : 1.0; // Smaller in the swarm so the shapes read
+      const s = hidden ? 0 : swarmSize * (isUp ? 1.15 * (1.0 - state.thumbsUpPopEnv) : 1.0 + state.thumbBurstEnv * 0.35);
+      dummy.scale.setScalar(Math.max(0.001, s));
+      dummy.updateMatrix();
+      if (isUp) thumbsUpInstanced.setMatrixAt(i - THUMB_DOWN_COUNT, dummy.matrix);
+      else thumbsDownInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    thumbsDownInstanced.instanceMatrix.needsUpdate = true;
+    thumbsUpInstanced.instanceMatrix.needsUpdate = true;
+  }
+
   if (heartInstanced.visible) {
     for (let i = 0; i < HEART_COUNT; i++) {
       const hFrac = ((i / HEART_COUNT) + t * 0.18) % 1.0;
@@ -3602,7 +4102,7 @@ function animate(nowMs) {
 
   // 3D Oscilloscope Waveform Ribbon (4x+ thick ribbon mesh synced to vocals & mid frequencies)
   const isPart9Crazy = (part.id === 9);
-  const isRedScene = (part.id === 4 || part.id === 7 || part.id === 10 || (isPart9Crazy && state.invertEnv > 0.45));
+  const isRedScene = (part.id === 4 || part.id === 7 || part.id === 10 || climaxPhase === 2 || (isPart9Crazy && state.invertEnv > 0.45));
   if (ringLine.visible) {
     ringLine.material.color.setHex(isRedScene ? 0x00f0ff : 0xff1234);
     const posAttr = ringGeo.attributes.position;
@@ -3623,7 +4123,12 @@ function animate(nowMs) {
 
   // Dynamic Strobe & Part Lighting Palette
   strobeLight.intensity = state.snareEnv * 12 + state.hatEnv * 6 + state.invertEnv * (isPart9Crazy ? 32 : 20);
-  if (part.id === 10) {
+  if (climaxPhase === 1) {
+    scene.background.setHex(0x000000);
+  } else if (climaxPhase === 2) {
+    // Set in linear values: the post pass outputs them without sRGB encoding. A deep red to match the kisses finale
+    scene.background.setRGB(0.42, 0.01, 0.04, THREE.LinearSRGBColorSpace);
+  } else if (part.id === 10) {
     scene.background.setHex(0x180412);
   } else if (part.id === 4 || part.id === 7) {
     scene.background.setHex(0x12040a);
@@ -3634,6 +4139,9 @@ function animate(nowMs) {
   } else {
     scene.background.setHex(0x04060c);
   }
+  // Distant shaft frames fade into the red rather than into black
+  if (climaxPhase === 2) scene.fog.color.copy(scene.background);
+  else scene.fog.color.setHex(0x04060c);
 
   // Camera update: slow, smooth, continuous glide during the beatless 0:26.30 - 0:52.60 section (Parts III & IV) and Chill Part VIII (2:11.5 - 2:37.8)
   if (part.id === 3) {
@@ -3662,12 +4170,27 @@ function animate(nowMs) {
     );
     state.camTargetLook.set(0, 0.1, 0);
     state.camTargetRoll = Math.sin(p8Time * 0.42) * 0.06;
+  } else if (climaxPhase === 1) {
+    // Fast down the tunnel, swooping and banking hard with the hits
+    // (barrel rolls, pitch and yaw are added after the lerp below)
+    const sway = Math.sin(t * 1.3);
+    const swoop = Math.sin(t * 0.9);
+    // Aim just behind the words so they stay central while the tunnel swings around them
+    state.camTargetPos.set(sway * 2.6, -0.6 + swoop * 2.4, 12.6);
+    state.camTargetLook.set(0, -0.2, -6.0);
+    state.camTargetRoll = -sway * 0.25 + state.climaxBank * 0.4;
+  } else if (climaxPhase === 2) {
+    // Thumb swarm: swaying, bobbing and banking hard around the swarm (rolls, pitch and yaw added below)
+    const sway = Math.sin(t * 0.9);
+    state.camTargetPos.set(sway * 1.6, 0.3 + Math.sin(t * 1.3) * 0.9, 12.4 - SWARM_DOLLY);
+    state.camTargetLook.copy(SWARM_CENTER);
+    state.camTargetRoll = -sway * 0.25 + state.climaxBank * 0.4;
   }
 
   const isCrimeBarAny = isCrimeHoldBar || CRIME_3D_BOM_BAR_SET.has(currentBar);
   camera.position.lerp(state.camTargetPos, dt * (isSmoothGlide ? 3.2 : (isPart9Crazy ? 4.2 : 8.0)));
   state.camLook.lerp(state.camTargetLook, dt * (isSmoothGlide ? 3.8 : (isPart9Crazy ? 4.8 : 9.0)));
-  const shakeMult = isCrimeHoldBar ? 0.0 : (isPart9Crazy ? 0.22 : 1.0);
+  const shakeMult = (isCrimeHoldBar || climaxPhase === 2) ? 0.0 : (isPart9Crazy ? 0.22 : 1.0);
   const shake = isSmoothGlide ? 0 : (((state.kickEnv * (0.14 + chaos * 0.35)) + (state.snareEnv * 0.16)) * shakeMult);
   camera.position.x += (Math.random() - 0.5) * shake;
   camera.position.y += (Math.random() - 0.5) * shake;
@@ -3676,6 +4199,35 @@ function animate(nowMs) {
   camera.lookAt(state.camLook);
   state.camRoll = THREE.MathUtils.lerp(state.camRoll, state.camTargetRoll, dt * (isSmoothGlide ? 3.2 : 5.0));
   camera.rotation.z += state.camRoll + (isPart9Crazy ? Math.sin(t * 1.4) * 0.012 : (!isSmoothGlide && chaos > 0.8 ? Math.sin(t * 2.2) * (chaos - 0.75) * 0.18 : 0));
+  if (climaxPhase) {
+    // Climax: a full barrel roll (a tilt in the swarm half) through every other wordless answer bar,
+    // and a pitch dive, a yaw swing or both through the ones between. Word hits punch pitch and yaw.
+    let pitch = state.camKickPitch;
+    let yaw = state.camKickYaw;
+    if (currentBar % 2 === 1 && !active2DSegNow) {
+      const p = t / BAR_SEC - currentBar;
+      const n = (currentBar - (climaxPhase === 1 ? 113 : 129)) / 2;
+      const swing = Math.sin(p * Math.PI);
+      if (n % 2 === 0) {
+        if (climaxPhase === 1) {
+          const whip = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+          camera.rotation.z += whip * Math.PI * 2 * (n % 4 === 0 ? 1 : -1);
+        } else {
+          // The swarm spells A and I in these bars, so tilt instead of rolling them upside down
+          camera.rotation.z += swing * 0.3 * (n % 4 === 0 ? 1 : -1);
+        }
+      } else if (n === 1) {
+        pitch -= swing * 0.35;
+      } else if (n === 3) {
+        yaw += swing * 0.45;
+      } else {
+        pitch += swing * 0.3;
+        yaw -= swing * 0.35;
+      }
+    }
+    camera.rotateX(pitch);
+    camera.rotateY(yaw);
+  }
 
   // Post-Processing Shader Uniforms (intense uOverdrive in Part IX & "VIBECODING IS NOT A CRIME" while camera stays steady!)
   postUniforms.uTime.value = t;
@@ -3686,6 +4238,28 @@ function animate(nowMs) {
   postUniforms.uOverdrive.value = isPart9Crazy
     ? (isCrimeBarAny ? Math.min(1.35, 0.85 + state.kickEnv * 0.45) : Math.min(1.15, 0.55 + state.kickEnv * 0.4 + state.snareEnv * 0.25))
     : 0.0;
+  postUniforms.uMono.value = climaxPhase === 1 ? 1.0 : 0.0;
+  postUniforms.uRadial.value = climaxPhase === 1 ? 0.045 + state.kickEnv * 0.015 : 0.0;
+
+  if (climaxPhase) {
+    // Clean image so the rare flashes hit hard; the overdrive only returns for the last 4 bars
+    const finale = currentBar >= 138 && currentBar < 142;
+    camera.fov = (climaxPhase === 1 ? 64 : 58) + state.kickEnv * (climaxPhase === 1 ? 9.0 : 3.0);
+    camera.updateProjectionMatrix();
+    postUniforms.uChromatic.value = 0.002 + state.kickEnv * (finale ? 0.016 : 0.006);
+    postUniforms.uGlitch.value = (state.glitchTear + (finale ? state.snareEnv * 0.35 : 0)) * 0.7;
+    postUniforms.uZoomPunch.value = state.kickEnv * 0.06;
+    postUniforms.uOverdrive.value = finale ? Math.min(1.0, 0.45 + state.kickEnv * 0.35) : 0.0;
+    if (climaxPhase === 2) {
+      // Thumb swarm: heavier RGB split, glitch slices on the snares, harder zoom and blur punches on the kicks.
+      // The contrast-boosting overdrive pass only pulses with the kicks, and opens up in the last 4 bars
+      postUniforms.uChromatic.value = 0.003 + state.kickEnv * 0.02 + state.snareEnv * 0.01;
+      postUniforms.uGlitch.value = (state.glitchTear + state.snareEnv * 0.4) * 0.8;
+      postUniforms.uZoomPunch.value = state.kickEnv * 0.08;
+      postUniforms.uRadial.value = state.kickEnv * 0.04;
+      postUniforms.uOverdrive.value = finale ? Math.min(1.0, 0.4 + state.kickEnv * 0.3) : state.kickEnv * 0.15;
+    }
+  }
 
   renderer.setRenderTarget(renderTarget);
   renderer.render(scene, camera);
