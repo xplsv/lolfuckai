@@ -373,11 +373,92 @@ const state = {
 // ============================================================================
 // 4. WEB AUDIO API ENGINE
 // ============================================================================
-const audioEl = new Audio('song.m4a');
-audioEl.preload = 'auto';
-audioEl.loop = false;
+let audioCtx = null;
+let analyser = null;
+let freqData = new Uint8Array(128);
+let timeData = new Uint8Array(128);
 
-audioEl.addEventListener('ended', () => {
+// The song is decoded upfront and played through an AudioBufferSourceNode, and the demo clock is
+// derived from audioCtx.currentTime. HTMLMediaElement.currentTime is too coarse and drifts in Safari.
+class MusicPlayer extends EventTarget {
+  constructor(url, sampleRate) {
+    super();
+    this.buffer = null;
+    this.source = null;
+    this.offset = 0; // Song position while paused
+    this.startedAt = 0; // audioCtx time at which song position 0 played
+    this.playRequest = null;
+    // Decode without waiting for a user gesture, at the file's own sample rate to avoid resampling twice
+    this.ready = fetch(url)
+      .then((response) => response.arrayBuffer())
+      .then((data) => new OfflineAudioContext(2, 1, sampleRate).decodeAudioData(data))
+      .then((buffer) => { this.buffer = buffer; });
+  }
+
+  get paused() {
+    return this.source === null;
+  }
+
+  get currentTime() {
+    if (this.paused) return this.offset;
+    // Subtract the output latency so visuals match what is heard rather than what was just rendered
+    const latency = audioCtx.outputLatency || audioCtx.baseLatency || 0;
+    return Math.min(this.buffer.duration, Math.max(0, audioCtx.currentTime - this.startedAt - latency));
+  }
+
+  set currentTime(sec) {
+    if (this.paused) {
+      this.offset = sec;
+      return;
+    }
+    this.stopSource();
+    this.startSource(sec);
+  }
+
+  async play() {
+    const request = this.playRequest = {};
+    await this.ready;
+    if (audioCtx.state !== 'running') await audioCtx.resume();
+    // Bail if pause() was called or another play() won while we were waiting
+    if (this.playRequest !== request || !this.paused) return;
+    this.startSource(this.offset);
+    this.dispatchEvent(new Event('play'));
+  }
+
+  pause() {
+    this.playRequest = null;
+    if (this.paused) return;
+    this.offset = this.currentTime;
+    this.stopSource();
+    this.dispatchEvent(new Event('pause'));
+  }
+
+  startSource(offset) {
+    const src = audioCtx.createBufferSource();
+    src.buffer = this.buffer;
+    src.connect(analyser);
+    src.onended = () => {
+      if (this.source !== src) return;
+      this.source = null;
+      this.offset = 0;
+      this.dispatchEvent(new Event('ended'));
+    };
+    src.start(0, offset);
+    this.source = src;
+    this.startedAt = audioCtx.currentTime - offset;
+  }
+
+  stopSource() {
+    const src = this.source;
+    this.source = null;
+    src.onended = null;
+    src.stop();
+  }
+}
+
+const music = new MusicPlayer('song.m4a', 44100);
+
+music.addEventListener('ended', () => {
   state.isPlaying = false;
   state.hasStarted = false;
   state.currentTime = 0;
@@ -399,7 +480,7 @@ async function requestWakeLock() {
   wakeLockPending = true;
   try {
     const lock = await navigator.wakeLock.request('screen');
-    if (audioEl.paused) {
+    if (music.paused) {
       lock.release();
     } else {
       wakeLock = lock;
@@ -416,32 +497,27 @@ function releaseWakeLock() {
   wakeLock = null;
 }
 
-audioEl.addEventListener('play', requestWakeLock);
-audioEl.addEventListener('pause', releaseWakeLock);
-audioEl.addEventListener('ended', releaseWakeLock);
+music.addEventListener('play', requestWakeLock);
+music.addEventListener('pause', releaseWakeLock);
+music.addEventListener('ended', releaseWakeLock);
 
 // The browser drops the lock when the tab is hidden, so re-acquire it on return
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !audioEl.paused) requestWakeLock();
+  if (document.visibilityState === 'visible' && !music.paused) requestWakeLock();
 });
-
-let audioCtx = null;
-let analyser = null;
-let freqData = new Uint8Array(128);
-let timeData = new Uint8Array(128);
 
 function ensureAudio() {
   if (audioCtx) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx.state !== 'running') audioCtx.resume();
     return;
   }
+  // Web Audio follows the iOS ringer switch unless the session is marked as media playback
+  if (navigator.audioSession) navigator.audioSession.type = 'playback';
   const Ctx = window.AudioContext || window.webkitAudioContext;
   audioCtx = new Ctx();
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 256;
   analyser.smoothingTimeConstant = 0.62;
-  const src = audioCtx.createMediaElementSource(audioEl);
-  src.connect(analyser);
   analyser.connect(audioCtx.destination);
   freqData = new Uint8Array(analyser.frequencyBinCount);
   timeData = new Uint8Array(analyser.frequencyBinCount);
@@ -465,7 +541,7 @@ function findIndexBefore(arr, t) {
 
 function seekTo(targetSec) {
   const clamped = Math.max(0, Math.min(BEATMAP.duration - 0.5, targetSec));
-  audioEl.currentTime = clamped;
+  music.currentTime = clamped;
   state.currentTime = clamped;
   // Subtract 0.02s when indexing so an event right at targetSec (or Bar 0 at 0.06s) is never skipped
   state.lastBomIdx = findIndexBefore(BOM_EVENTS, clamped - 0.02);
@@ -506,11 +582,11 @@ async function launchDemo(startSec = 0) {
   dom.startScreen.classList.add('hidden');
   seekTo(startSec);
   try {
-    await audioEl.play();
+    await music.play();
     // Reset indices again after play() resolves so no idle frame could advance lastBomIdx past Bar 0!
-    state.lastBomIdx = findIndexBefore(BOM_EVENTS, audioEl.currentTime - 0.02);
-    state.lastTransientIdx = findIndexBefore(BEATMAP.events, audioEl.currentTime - 0.02);
-    state.lastStep16Global = Math.floor(audioEl.currentTime / STEP16_SEC) - 1;
+    state.lastBomIdx = findIndexBefore(BOM_EVENTS, music.currentTime - 0.02);
+    state.lastTransientIdx = findIndexBefore(BEATMAP.events, music.currentTime - 0.02);
+    state.lastStep16Global = Math.floor(music.currentTime / STEP16_SEC) - 1;
   } catch (_e) {
     state.isPlaying = false;
   }
@@ -521,12 +597,12 @@ function togglePlay() {
     launchDemo(0);
     return;
   }
-  if (audioEl.paused) {
+  if (music.paused) {
     ensureAudio();
-    audioEl.play();
+    music.play();
     state.isPlaying = true;
   } else {
-    audioEl.pause();
+    music.pause();
     state.isPlaying = false;
   }
 }
@@ -3025,7 +3101,7 @@ function animate(nowMs) {
   lastMs = nowMs;
 
   if (state.isPlaying && state.hasStarted) {
-    state.currentTime = audioEl.currentTime;
+    state.currentTime = music.currentTime;
   } else if (!state.hasStarted) {
     state.currentTime = (nowMs * 0.001) % 26.0;
   }
@@ -3664,14 +3740,14 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
     e.preventDefault();
     const stepSec = (e.shiftKey ? 8 : 2) * BAR_SEC;
-    const baseTime = state.hasStarted ? audioEl.currentTime : 0;
+    const baseTime = state.hasStarted ? music.currentTime : 0;
     const targetSec = Math.max(0, baseTime - stepSec);
     if (!state.hasStarted) launchDemo(targetSec);
     else seekTo(targetSec);
   } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
     e.preventDefault();
     const stepSec = (e.shiftKey ? 8 : 2) * BAR_SEC;
-    const baseTime = state.hasStarted ? audioEl.currentTime : 0;
+    const baseTime = state.hasStarted ? music.currentTime : 0;
     const targetSec = Math.min(BEATMAP.duration - 0.5, baseTime + stepSec);
     if (!state.hasStarted) launchDemo(targetSec);
     else seekTo(targetSec);
