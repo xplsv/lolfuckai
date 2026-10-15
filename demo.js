@@ -1401,89 +1401,56 @@ function drawProdHeaderCanvas(canvas, ctx, item) {
   const isTopic = item.sourceType === 'topic';
   ctx.fillStyle = isKisses ? '#3a0826' : (isTopic ? '#1e1436' : '#14243b');
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = isKisses ? '#cc0055' : (isTopic ? '#641846' : '#224488');
-  ctx.fillRect(0, 0, canvas.width, 54);
-  ctx.strokeStyle = isKisses ? '#ffdd00' : (isTopic ? '#ff0055' : '#7aa6d8');
-  ctx.lineWidth = 8;
-  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
 
-  // Title (Prod Name, BBS Topic Title, or Valentine Kisses Dedication)
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '900 50px Impact, Anton, sans-serif';
-  ctx.textAlign = 'left';
-  const titleStr = (item.prodName || 'POUËT PROD').toUpperCase().slice(0, 29);
-  ctx.fillText(titleStr, 24, 116);
-
-  // Group / Topic / Valentine Award subtitle
-  ctx.fillStyle = '#ffdd00';
-  ctx.font = 'bold 26px monospace';
+  // Title plus one short line (group or award); BBS topic titles already say what they are
   const groupsArr = Array.isArray(item.groups) ? item.groups : [item.group || 'SCENE'];
-  const partyTxt = item.party ? `${item.party} ${item.partyYear || ''} (${item.partyCompo || ''})` : '';
   const subLine = isKisses
-    ? `AWARD :: ${item.award || 'CERTIFIED POUËT HATER <3'}`
-    : (isTopic
-      ? `POUËT.NET BBS THREAD // TOPIC.PHP?WHICH=${item.topicId} // POST #${item.postId}`
-      : `BY ${groupsArr.join(' & ').toUpperCase()} // ${partyTxt}`.slice(0, 56));
-  ctx.fillText(subLine, 24, 162);
+    ? (item.award || 'CERTIFIED POUËT HATER <3')
+    : (isTopic ? '' : `BY ${groupsArr.join(' & ').toUpperCase()}`);
 
-  // Top bar metadata
-  ctx.fillStyle = isKisses ? '#fff0f8' : '#b8d8ff';
-  ctx.font = 'bold 24px monospace';
-  const authorName = item.author || 'uncle-x';
-  const topMeta = isKisses
-    ? `<3 SENDING KISSES & BIG LOVE TO @${authorName.toUpperCase()} (WHO=${item.userId}) <3`
-    : (isTopic
-      ? `POUËT BBS FLAMEWAR :: TOPIC #${item.topicId} :: FEATURING @${authorName.toUpperCase()}`
-      : `POUËT.NET PROD #${item.prodId} :: AVG ${item.voteavg || '-'} (👎 ${item.votedown || '0'}) :: @${authorName.toUpperCase()}`);
-  ctx.fillText(topMeta.slice(0, 62), 24, 36);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 76px Impact, Anton, sans-serif';
+  ctx.fillText((item.prodName || 'POUËT PROD').toUpperCase(), 32, subLine ? 100 : 124, canvas.width - 64);
+  if (subLine) {
+    ctx.fillStyle = '#ffdd00';
+    ctx.font = 'bold 32px monospace';
+    ctx.fillText(subLine, 34, 156, canvas.width - 68);
+  }
 }
 
+// Laid out for 1024x256 and scaled to fit, so the smaller arena labels get the same layout
 function drawProdCommentCanvas(canvas, ctx, item) {
   const isKisses = item.sourceType === 'kisses';
-  const isTopic = item.sourceType === 'topic';
+  ctx.save();
+  ctx.scale(canvas.width / 1024, canvas.height / 256);
   ctx.fillStyle = isKisses ? '#2d061e' : '#162742';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, 1024, 256);
 
-  ctx.fillStyle = isKisses ? '#ff0066' : (isTopic ? '#8c1248' : (item.vote === 'sucks' ? '#b81028' : '#224488'));
-  ctx.fillRect(0, 0, canvas.width, 60);
-
-  ctx.strokeStyle = isKisses ? '#ffdd00' : (isTopic ? '#00f0ff' : '#ff1234');
-  ctx.lineWidth = 8;
-  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
-
+  // Avatar and handle, then the quote
   const avImg = getAvatarImg(item.avatarPath || 'assets/avatars/mfx.gif');
   if (avImg && avImg.complete && avImg.naturalWidth > 0) {
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(14, 7, 46, 46);
-    ctx.drawImage(avImg, 16, 9, 42, 42);
+    ctx.drawImage(avImg, 28, 24, 56, 56);
   }
-
-  const authorName = item.author || 'uncle-x';
-  const uid = item.userId || '751';
-  const badgeStr = isKisses
-    ? 'WE LOVE YOU <3 XOXO'
-    : (isTopic ? `BBS TOPIC #${item.topicId}` : `voted: ${(item.vote || 'sucks').toUpperCase()}`);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 27px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`${authorName} (who=${uid}) // ${badgeStr} // ${item.date || '2026'}`, 74, 39);
+  ctx.fillStyle = '#ffdd00';
+  ctx.font = 'bold 36px monospace';
+  ctx.fillText(`@${item.author || 'uncle-x'}`, 104, 64, 892);
 
-  // Render quote text cleanly with multi-line wrapping
   const commentText = isKisses ? (item.kissNote || item.comment || '') : (item.comment || '');
+  ctx.fillStyle = '#ffffff';
   if (commentText.length <= 42) {
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 54px Impact, Anton, sans-serif';
-    ctx.fillText(commentText, 26, 148, canvas.width - 52);
+    ctx.font = '900 64px Impact, Anton, sans-serif';
+    ctx.fillText(commentText, 28, 172, 968);
   } else {
-    ctx.font = 'bold 31px Tahoma, sans-serif';
-    const wrapped = wrapCanvasLines(ctx, commentText, canvas.width - 56, 4);
+    ctx.font = 'bold 32px Tahoma, sans-serif';
+    const wrapped = wrapCanvasLines(ctx, commentText, 968, 4);
     for (let i = 0; i < wrapped.length; i++) {
-      ctx.fillStyle = i === 0 ? '#ffffff' : '#ffdd00';
-      ctx.fillText(wrapped[i], 28, 106 + i * 38, canvas.width - 56);
+      ctx.fillText(wrapped[i], 28, 122 + i * 38, 968);
     }
   }
+  ctx.restore();
 }
 
 // High-Res 3D Screen Renderer for Pouët BBS Topic Threads (13101, 13104, 13069) & Part X Kisses Shrine
@@ -1499,54 +1466,42 @@ function drawTopicScreenCanvas(item) {
   ctx.fillStyle = '#0d1829';
   ctx.fillRect(0, 0, 1024, 512);
 
-  // Pouet table header
-  ctx.fillStyle = '#224488';
-  ctx.fillRect(12, 12, 1000, 48);
-  ctx.strokeStyle = '#6090c8';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(12, 12, 1000, 488);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '900 26px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`pouët.net BBS :: topic.php?which=${item.topicId} — "${item.topicTitle}"`, 28, 44);
-
   const posts = (item.threadContext && item.threadContext.length > 0)
     ? item.threadContext
     : [{ author: item.author, avatarPath: item.avatarPath, date: item.date, comment: item.comment }];
 
-  let y = 74;
-  const boxH = Math.floor((410 - (posts.length - 1) * 12) / posts.length);
-
+  // Just the posts: avatar, handle and text, with the featured (last) post marked in red
+  const gap = 28;
+  const boxH = Math.floor((512 - 48 - (posts.length - 1) * gap) / posts.length);
+  let y = 24;
+  ctx.textAlign = 'left';
   for (let i = 0; i < posts.length; i++) {
     const p = posts[i];
     const isFeatured = i === posts.length - 1;
-    ctx.fillStyle = isFeatured ? '#2b1432' : '#182c48';
-    ctx.fillRect(24, y, 976, boxH);
-    ctx.strokeStyle = isFeatured ? '#ff0055' : '#396ba5';
-    ctx.lineWidth = isFeatured ? 5 : 2;
-    ctx.strokeRect(24, y, 976, boxH);
+    if (isFeatured) {
+      ctx.fillStyle = '#ff0055';
+      ctx.fillRect(24, y, 6, boxH);
+    }
 
-    // Draw avatar
     const av = getAvatarImg(p.avatarPath || 'assets/avatars/mfx.gif');
     if (av && av.complete && av.naturalWidth > 0) {
       ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(38, y + 14, 52, 52);
-      ctx.drawImage(av, 40, y + 16, 48, 48);
+      ctx.drawImage(av, 48, y + 4, 52, 52);
     }
 
     ctx.fillStyle = isFeatured ? '#ffdd00' : '#8ab8f0';
-    ctx.font = 'bold 23px monospace';
-    ctx.fillText(`@${p.author}  ::  posted on ${p.date || '2026'}`, 104, y + 36);
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText(`@${p.author}`, 120, y + 30, 860);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = isFeatured ? 'bold 26px Tahoma, sans-serif' : '22px Tahoma, sans-serif';
-    const lines = wrapCanvasLines(ctx, p.comment, 865, isFeatured ? 3 : 2);
+    ctx.font = isFeatured ? 'bold 28px Tahoma, sans-serif' : '24px Tahoma, sans-serif';
+    const lineH = isFeatured ? 34 : 30;
+    const maxLines = Math.max(1, Math.floor((boxH - 40) / lineH));
+    const lines = wrapCanvasLines(ctx, p.comment, 860, maxLines);
     for (let l = 0; l < lines.length; l++) {
-      ctx.fillText(lines[l], 104, y + 68 + l * 30, 865);
+      ctx.fillText(lines[l], 120, y + 66 + l * lineH, 860);
     }
-    y += boxH + 12;
+    y += boxH + gap;
   }
   heroTopicTex.needsUpdate = true;
 }
