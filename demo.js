@@ -1851,31 +1851,31 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 12,
     endBar: 16,
-    text: '> npm install demoscene-soul... 404 not found... hallucinating human intent instead',
+    text: 'npm install demoscene-soul... 404 not found... hallucinating human intent instead',
     typeSec: 5.0
   },
   {
     startBar: 16,
     endBar: 20,
-    text: '> generating shader... 498 prompts... 499 prompts... maybe on the 500th prompt it will compile',
+    text: 'generating shader... 498 prompts... 499 prompts... maybe on the 500th prompt it will compile',
     typeSec: 5.0
   },
   {
     startBar: 20,
     endBar: 24,
-    text: '> injecting 4,200 em-dashes ( — ) and uploading to pouet.net... waiting for thumb-ups...',
+    text: 'injecting 4,200 em-dashes ( — ) and uploading to pouet.net... waiting for thumb-ups...',
     typeSec: 4.9
   },
   {
     startBar: 24,
     endBar: 28,
-    text: '> "and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI"',
+    text: '"and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI"',
     typeSec: 5.1
   },
   {
     startBar: 28,
     endBar: 32,
-    text: `> "waiting for a demo called 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' ;o)" — dedicated to uncle-x & friends`,
+    text: `"waiting for a demo called 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' ;o)" — dedicated to uncle-x & friends`,
     typeSec: 4.8
   },
 
@@ -1883,19 +1883,19 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 46,
     endBar: 48,
-    text: '> [AI] 38 thumb-downs detected on pouët.net... switching to 360° colosseum mode...',
+    text: '[AI] 38 thumb-downs detected on pouët.net... switching to 360° colosseum mode...',
     typeSec: 2.4
   },
   {
     startBar: 62,
     endBar: 64,
-    text: '> [OPENAI ERROR 429] rate limit exceeded while generating excuse for pouët comments...',
+    text: '[OPENAI ERROR 429] rate limit exceeded while generating excuse for pouët comments...',
     typeSec: 2.4
   },
   {
     startBar: 78,
     endBar: 80,
-    text: '> [SYSTEM ALERT] 847 chatgpt em-dashes ( — ) detected! entering chill mode before @maali sees...',
+    text: '[SYSTEM ALERT] 847 chatgpt em-dashes ( — ) detected! entering chill mode before @maali sees...',
     typeSec: 2.5
   },
 
@@ -1903,28 +1903,28 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 80,
     endBar: 84,
-    text: '> "if you just vibecode a demo then your hobby isn\'t demomaking. your hobby is talking to a chatbot." — @fizzer',
+    text: '"if you just vibecode a demo then your hobby isn\'t demomaking. your hobby is talking to a chatbot." — @fizzer',
     typeSec: 5.0,
     avatarPath: 'assets/avatars/fizzer_pouet.gif'
   },
   {
     startBar: 84,
     endBar: 88,
-    text: '> "\'idea men\' could never actually do anything so they were harmless — now with AI they think they\'re creators." — @uncle-x',
+    text: '"\'idea men\' could never actually do anything so they were harmless — now with AI they think they\'re creators." — @uncle-x',
     typeSec: 5.1,
     avatarPath: 'assets/avatars/mfx.gif'
   },
   {
     startBar: 88,
     endBar: 92,
-    text: '> "it\'s called reverse centaur. this slavish oiling of the machine, while the machine is the creator." — @4gentE',
+    text: '"it\'s called reverse centaur. this slavish oiling of the machine, while the machine is the creator." — @4gentE',
     typeSec: 5.0,
     avatarPath: 'assets/avatars/yellow_arrow.gif'
   },
   {
     startBar: 92,
     endBar: 96,
-    text: `> "i don't think 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' demo will be shown on twitch..." — @leGend`,
+    text: `"i don't think 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' demo will be shown on twitch..." — @leGend`,
     typeSec: 5.0,
     avatarPath: 'assets/avatars/legend_wizard2.gif'
   },
@@ -1933,19 +1933,19 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 110,
     endBar: 112,
-    text: '> [BILLING ALERT] out of token credits... auto-charging $20.00 to finish this overdrive part...',
+    text: '[BILLING ALERT] out of token credits... auto-charging $20.00 to finish this overdrive part...',
     typeSec: 2.3
   },
   {
     startBar: 126,
     endBar: 128,
-    text: '> [MOD ALERT] 800+ pouët forum replies detected... @havoc is reaching for the lock button...',
+    text: '[MOD ALERT] 800+ pouët forum replies detected... @havoc is reaching for the lock button...',
     typeSec: 2.4
   },
   {
     startBar: 142,
     endBar: 144,
-    text: '> [SYSTEM OVERRIDE] rage buffer full... switching AI to unconditional love mode for our favorite haters <3',
+    text: '[SYSTEM OVERRIDE] rage buffer full... switching AI to unconditional love mode for our favorite haters <3',
     typeSec: 2.5
   }
 ];
