@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self';">
+  <title>LOL FUCK AI by XPLSV</title>
+  <meta name="description" content="A 100% vibecoded Three.js 3D demoscene production by XPLSV, synced to Locked Club - GRANDFATHER SLEEPS LOUD and celebrating Pouët's anti-AI prod comments and BBS flamewars.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&family=Space+Grotesk:wght@800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="webgl-container" aria-label="Three.js 3D Demoscene Viewport"></div>
+
+  <!-- 2D Live Typewriter Overlay for AI Prompts & Chill Intermission -->
+  <div id="ai-typing-overlay" class="hidden" aria-live="polite">
+    <div class="ai-typing-inner">
+      <div id="ai-typing-speaker"></div>
+      <div id="ai-typing-text"></div>
+      <div id="ai-typing-reply"></div>
+    </div>
+  </div>
+
+  <!-- Minimal bottom edge scrub line (only visible on hover) -->
+  <div id="edge-scrubber" title="Click to seek (Keys 1-8 jump parts, Space play/pause)">
+    <div id="edge-progress"></div>
+  </div>
+
+  <!-- Minimal click-to-launch screen showing uncle-x's icon & music credit -->
+  <div id="start-screen">
+    <div class="start-inner">
+      <img src="assets/mfx.gif" alt="mfx" class="start-avatar">
+      <p class="start-sub">[ CLICK ANYWHERE OR PRESS SPACE ]</p>
+      <p class="start-credit">MUSIC: LOCKED CLUB — "GRANDFATHER SLEEPS LOUD"</p>
+    </div>
+  </div>
+
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

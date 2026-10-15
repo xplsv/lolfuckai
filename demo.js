@@ -1,0 +1,3434 @@
+import * as THREE from './vendor/three.module.min.js';
+import {
+  ALL_AI_COMMENTS,
+  EXACT_COMMENTS,
+  COMMUNITY_QUOTES,
+  BEATMAP
+} from './data.js';
+import { IMPACT_GLYPHS } from './impact_font.js';
+
+// ============================================================================
+// 1. DERIVE THE 4 TOKENS ("LOL", 2ND WORD, "A", "I") FROM POUËT DATA
+// ============================================================================
+const rawPhrase = (EXACT_COMMENTS[1]?.comment || 'Lol f AI.').replace('.', '').trim().toUpperCase().split(/\s+/);
+const BEAT_TOKENS = [
+  rawPhrase[0] || 'LOL',
+  rawPhrase[1] || '---',
+  'A',
+  'I'
+];
+
+// Custom 4-word beat tokens for prods that only exist in ALL_AI_COMMENTS so BEAT_TOKENS is never repeated as a fallback!
+const CUSTOM_PROD_BEAT_TOKENS = {
+  '106758': ['PURE', 'CERTIFIED', 'A.I.', 'SLOP.'],
+  '107015': ['HONEST', 'INFOFILE:', 'STILL A', 'PIGGIE!'],
+  '106822': ['I DRAW', 'A LINE', 'RIGHT', 'HERE!'],
+  '106779': ['ARACHNO', 'BOT:', 'SLOP', 'DETECTED!'],
+  '106803': ['REVISION', '2026:', 'INSTANT', 'SUCKS!'],
+  '106694': ['SERPENT', 'IN', 'SLOP', 'PARADISE!'],
+  '103971': ['UNCLE-X', 'SAYS:', 'THUMB', 'DOWN!'],
+  '97475': ['VECTORY', 'TRAIL:', 'ZERO', 'EFFORT!'],
+  '103715': ['THUMB', 'DOWN:', 'OBVIOUS', 'REASONS!'],
+  '104418': ['HERE IS', 'YOUR', 'A.I.', 'THUMB!'],
+  '104005': ['NEXT TIME', 'ASK A', 'HUMAN', 'MUSICIAN!'],
+  '104029': ['SANS A.I.', 'LOADING', 'PICTURE', 'THUMB!'],
+  '96697': ['PARTY', 'CULTURE:', 'NO BOTS', 'ALLOWED!']
+};
+
+// Build PROD_QUOTES in strict round-robin order across all 29 unique Pouët prods so every prod is shown once before any prod repeats!
+const PROD_QUOTES = (() => {
+  // Prioritize COMMUNITY_QUOTES first so every prod with rich multi-author roasts & custom beatTokens uses them first!
+  const merged = [
+    ...COMMUNITY_QUOTES.filter((q) => q.sourceType !== 'topic'),
+    ...ALL_AI_COMMENTS.map((c) => ({
+      ...c,
+      sourceType: 'prod',
+      author: c.author || 'uncle-x',
+      userId: c.userId || '751',
+      glops: c.glops || '1358',
+      avatarPath: c.avatarPath || 'assets/avatars/mfx.gif',
+      beatTokens: c.beatTokens || CUSTOM_PROD_BEAT_TOKENS[String(c.prodId)] || ['CERTIFIED', 'POUËT', 'THUMB', 'DOWN!']
+    }))
+  ];
+  const byProd = new Map();
+  const seenComment = new Set();
+  for (let i = 0; i < merged.length; i++) {
+    const p = merged[i];
+    if (!p.screenshot || p.screenshot.includes('prod_')) continue;
+    const key = `${p.prodId}:${(p.comment || '').slice(0, 48)}`;
+    if (seenComment.has(key)) continue;
+    seenComment.add(key);
+    if (!byProd.has(p.prodId)) byProd.set(p.prodId, []);
+    byProd.get(p.prodId).push(p);
+  }
+
+  // Separate prods whose primary comment is longer from the 7 short 3-word uncle-x prods, then interleave them so short comments never cluster!
+  const richLists = [];
+  const shortLists = [];
+  for (const [, list] of byProd.entries()) {
+    const firstComment = (list[0]?.comment || '').trim();
+    if (firstComment.length <= 16) {
+      shortLists.push(list);
+    } else {
+      richLists.push(list);
+    }
+  }
+  const orderedLists = [];
+  let sIdx = 0;
+  // Lead with the signature 3-word @uncle-x comment on the very first 3D drop (Bar 32)
+  if (shortLists.length > 0) {
+    const openingList = shortLists[sIdx++].slice();
+    openingList[0] = { ...openingList[0], beatTokens: BEAT_TOKENS };
+    orderedLists.push(openingList);
+  }
+  for (let r = 0; r < richLists.length; r++) {
+    orderedLists.push(richLists[r]);
+    if ((r + 1) % 3 === 0 && sIdx < shortLists.length) {
+      orderedLists.push(shortLists[sIdx++]);
+    }
+  }
+  while (sIdx < shortLists.length) {
+    orderedLists.push(shortLists[sIdx++]);
+  }
+
+  const roundRobin = [];
+  let round = 0;
+  while (true) {
+    let added = 0;
+    for (const list of orderedLists) {
+      if (round < list.length) {
+        roundRobin.push(list[round]);
+        added++;
+      }
+    }
+    if (added === 0) break;
+    round++;
+  }
+  return roundRobin;
+})();
+const FORUM_QUOTES = COMMUNITY_QUOTES.filter((q) => q.sourceType === 'topic');
+
+const dom = {
+  webglContainer: document.getElementById('webgl-container'),
+  aiTypingOverlay: document.getElementById('ai-typing-overlay'),
+  aiTypingSpeaker: document.getElementById('ai-typing-speaker'),
+  aiTypingText: document.getElementById('ai-typing-text'),
+  aiTypingReply: document.getElementById('ai-typing-reply'),
+  edgeScrubber: document.getElementById('edge-scrubber'),
+  edgeProgress: document.getElementById('edge-progress'),
+  startScreen: document.getElementById('start-screen')
+};
+
+// ============================================================================
+// 2. SONG STRUCTURE: 8 DISTINCT DEMO PARTS & EXACT RHYTHM MATRICES
+// ============================================================================
+const BAR_SEC = 240.0 / 146.0; // 1.6438356s per bar at 146.000 BPM
+const STEP16_SEC = BAR_SEC / 16.0; // 0.10274s per 16th note
+const BOM_OFFSETS = [0.060, 0.368, 0.676, 0.985]; // Exact 3-sixteenth spacing (0.3082s)
+
+// 10 Distinct Demoscene Parts (Each with its own 3D visual effect system!)
+const DEMO_PARTS = [
+  { id: 1, name: 'PART I // MFX MONOLITH GENESIS', startBar: 0, endBar: 7, startTime: 0.0 },
+  { id: 2, name: 'PART II // GLÖP REACTOR TUNNEL', startBar: 8, endBar: 15, startTime: 13.15 },
+  { id: 3, name: 'PART III // GYROSCOPIC REACTOR CORE', startBar: 16, endBar: 23, startTime: 26.30 },
+  { id: 4, name: 'PART IV // INDUSTRIAL CONVERGENCE', startBar: 24, endBar: 31, startTime: 39.45 },
+  { id: 5, name: 'PART V // BRUTALIST MUSEUM OF SLOP', startBar: 32, endBar: 47, startTime: 52.60 },
+  { id: 6, name: 'PART VI // 360° COLOSSEUM OF SUCKS', startBar: 48, endBar: 63, startTime: 78.90 },
+  { id: 7, name: 'PART VII // INDUSTRIAL GUILLOTINE & LASER CAGE', startBar: 64, endBar: 79, startTime: 105.21 },
+  { id: 8, name: 'PART VIII // GYROSCOPIC REACTOR & SHARD VORTEX', startBar: 80, endBar: 95, startTime: 131.51 },
+  { id: 9, name: 'PART IX // NON-STOP BOM // FFT CANYON', startBar: 96, endBar: 143, startTime: 157.81 },
+  { id: 10, name: 'PART X // SENDING KISSES TO THE HATERS <3', startBar: 144, endBar: 160, startTime: 236.71 }
+];
+
+// The 8 4-hit BOM patterns in Part X (3:56.71 - 4:24.00, even Bars 144..158), one main hater per 2-bar pattern!
+const KISS_BOM_BARS = [
+  144, 146, 148, 150, 152, 154, 156, 158
+];
+
+const HATER_KISSES = [
+  {
+    sourceType: 'kisses',
+    author: 'uncle-x',
+    userId: '751',
+    avatarPath: 'assets/avatars/mfx.gif',
+    screenshot: 'assets/screenshots/prod_106154.jpg',
+    prodName: 'VALENTINE #1 // UNCLE-X (MFX)',
+    award: 'SUPREME AI SLOP DESTROYER // 38 SUCKS & FLAMES',
+    comment: 'In short: don’t be a meat proxy. Don’t be surprised when people treat you like a useless slab of meat.',
+    kissNote: 'MWAH! THANK YOU FOR BEING OUR #1 MUSE <3',
+    beatTokens: ['KISSES', 'TO', 'UNCLE-X', 'MWAH <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: '4gentE',
+    userId: '104239',
+    avatarPath: 'assets/avatars/yellow_arrow.gif',
+    screenshot: 'assets/screenshots/prod_105992.png',
+    prodName: 'VALENTINE #2 // 4GENTE',
+    award: 'CHIEF GRANDPA FEELINGS INSPECTOR // 21 FLAMES',
+    comment: 'Dude how dare you say we shouldn’t support soul crushing tech while you’re wearing shoes? SHOES! Gotcha!',
+    kissNote: 'SENDING BIG BIO-CENTRIC SMOOCHES TO YOU <3',
+    beatTokens: ['KISSES', 'TO', '4GENTE', 'XOXO <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: 'okkie',
+    userId: '2282',
+    avatarPath: 'assets/avatars/davidje_pouet.gif',
+    screenshot: 'assets/screenshots/prod_104438.jpg',
+    prodName: 'VALENTINE #3 // OKKIE',
+    award: 'THE LIE MACHINE HUNTER // 21 SUCKS & FLAMES',
+    comment: 'Oh yeah, this stuff sucks lmao (haven’t watched it) — here is a cool picture of a horse <3',
+    kissNote: 'WE WILL NEVER DELETE OUR LOVE FOR YOU OKKIE <3',
+    beatTokens: ['SMOOCHES', 'TO', 'OKKIE', 'MWAH <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: 'fizzer',
+    userId: '82805',
+    avatarPath: 'assets/avatars/fizzer_pouet.gif',
+    screenshot: 'assets/screenshots/prod_105917.jpg',
+    prodName: 'VALENTINE #4 // FIZZER',
+    award: 'ORANGE PEEL SOMMELIER // 18 SUCKS & FLAMES',
+    comment: 'Bitter taste? This is like eating a big plate of orange peels. Category: residue.',
+    kissNote: 'OUR HOBBY IS SENDING KISSES TO FIZZER XOXO <3',
+    beatTokens: ['BIG LOVE', 'TO', 'FIZZER', 'XOXO <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: 'maali',
+    userId: '2378',
+    avatarPath: 'assets/avatars/sucks-rot2.gif',
+    screenshot: 'assets/screenshots/prod_105882.png',
+    prodName: 'VALENTINE #5 // MAALINSTRIPPARI',
+    award: 'EM-DASH EXTERMINATOR // 21 SUCKS & FLAMES',
+    comment: 'An agents.md should be the making of! The only credits involved are the token credits thrown at Claude.',
+    kissNote: 'ZERO EM-DASHES, 100% PURE LOVE FOR MAALI <3',
+    beatTokens: ['KISSES', 'TO', 'MAALI', 'MWAH <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: 'kaneel',
+    userId: '2019',
+    avatarPath: 'assets/avatars/hotpink.gif',
+    screenshot: 'assets/screenshots/prod_106154.jpg',
+    prodName: 'VALENTINE #6 // KANEEL',
+    award: 'POUËT SIN CONFESSOR // 17 SUCKS & FLAMES',
+    comment: 'Sir this is a Wendy’s. Non. Maintenant tu sors merci. I WANT POUET TO ACCEPT MY SINS!',
+    kissNote: 'GROS BISOUS MON CHER KANEEL XOXO <3',
+    beatTokens: ['BISOUS', 'TO', 'KANEEL', 'XOXO <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: 'Preacher',
+    userId: '4950',
+    avatarPath: 'assets/avatars/brs.gif',
+    screenshot: 'assets/screenshots/prod_105672.png',
+    prodName: 'VALENTINE #7 // PREACHER',
+    award: 'PROPHET OF THE BLEAK FUTURE // 10 SUCKS & FLAMES',
+    comment: 'Not made by human hands. A vantage point into a terrible future where nothing of significance exists.',
+    kissNote: 'BLESSINGS & KISSES FROM THE MACHINE PREACHER <3',
+    beatTokens: ['KISSES', 'TO', 'PREACHER', 'MWAH <3']
+  },
+  {
+    sourceType: 'kisses',
+    author: 'NR4',
+    userId: '101073',
+    avatarPath: 'assets/avatars/team210-fr.gif',
+    screenshot: 'assets/screenshots/prod_106129.png',
+    prodName: 'VALENTINE #8 // NR4 (TEAM210)',
+    award: 'GUARDIAN OF THE CRAFT // 7 SUCKS & FLAMES',
+    comment: ':( please learn the craft, I promise, it is fun! Resource starvation incoming: skill, sadly.',
+    kissNote: 'BIG LOVE & SALTOING PONIES TO NR4 XOXO <3',
+    beatTokens: ['BIG LOVE', 'TO', 'NR4', 'XOXO <3']
+  }
+];
+
+const HATER_KISSES_ROUND2_TOKENS = [
+  ['WE LOVE', 'YOU', 'UNCLE-X', 'XOXO <3'],
+  ['WE LOVE', 'YOU', '4GENTE', 'MWAH <3'],
+  ['WE LOVE', 'YOU', 'OKKIE', 'XOXO <3'],
+  ['WE LOVE', 'YOU', 'FIZZER', 'MWAH <3'],
+  ['WE LOVE', 'YOU', 'MAALI', 'XOXO <3'],
+  ["ON T'AIME", 'FORT', 'KANEEL', 'BISOUS!'],
+  ['WE LOVE', 'YOU', 'PREACHER', 'XOXO <3'],
+  ['WE LOVE', 'YOU', 'NR4', 'MWAH <3'],
+  ['WE LOVE', 'YOU', 'BITL', 'XOXO <3'],
+  ['WE LOVE', 'YOU', 'HAVOC', 'MWAH <3'],
+  ['FOREVER', 'YOURS,', 'UNCLE-X', 'MWAH <3']
+];
+
+function getPartForBar(barNum) {
+  for (const p of DEMO_PARTS) {
+    if (barNum >= p.startBar && barNum <= p.endBar) return p;
+  }
+  return DEMO_PARTS[DEMO_PARTS.length - 1];
+}
+
+// Intro bars with 4-BOM pattern (0:00 - 0:26.30 -> cubes only, NO words! 0:26.30 - 0:52.60 has NO 4-BOM pattern)
+const INTRO_BOM_BARS = [0, 2, 4, 6, 8, 10, 12, 14];
+
+// Strictly verified 4-hit BOM! BOM! BOM! BOM! bars from 0:52.60 (Bar 32) onwards
+const WORD_BOM_BARS = [
+  // Part V (Bars 32..44; Bars 46-47 are 2D AI text break)
+  32, 34, 36, 38, 40, 42, 44,
+  // Part VI (Bars 48..60 & 64..76; Bars 62-63 & 78-79 are 2D AI text breaks)
+  48, 50, 52, 54, 56, 58, 60,
+  64, 66, 68, 70, 72, 74, 76,
+  // Part VIII Chill Intermission (Bars 80..95) uses 2D text, no 3D words
+  80, 82, 84, 86, 88, 90, 92,
+  // Part IX (Bars 96..102 & 104..109: every-bar double-time overdrive; Bar 103 & Bars 110-111 are 2D AI text breaks!)
+  96, 97, 98, 99, 100, 101, 102,
+  104, 105, 106, 107, 108, 109,
+  // Part IX-C (Bars 112..140; Bars 126-127 & 142-143 are 2D AI text breaks) & Part X Kisses (even Bars 144..158 starting at 3:57!)
+  112, 114, 116, 118, 120, 122, 124,
+  128, 130, 132, 134, 136, 138, 140,
+  144, 146, 148, 150, 152, 154, 156, 158
+];
+const WORD_BOM_BAR_SET = new Set(WORD_BOM_BARS);
+
+// Odd bars that have the heavy 3-hit "BOOM - BOOM - BOOM" answer bass slam on 16th steps 1, 7, 13!
+const ANSWER_BASS_BAR_SET = new Set([
+  41, 43, 45,
+  49, 51, 53, 55, 57, 59, 61,
+  65, 67, 69, 71, 73, 75, 77,
+  113, 115, 117, 119, 121, 123, 125,
+  129, 131, 133, 135, 137, 139, 141
+]);
+
+// Stop / freeze bars (1-hit stop at step 0, pickup slam at step 15)
+const STOP_BAR_SET = new Set([62, 78, 103, 126]);
+
+// Bars in Part IX ("crazy part") that showcase "VIBECODING IS NOT A CRIME" in 3D with crazy blinking!
+const CRIME_3D_HOLD_BAR_SET = new Set([103]);
+const CRIME_3D_BOM_BAR_SET = new Set([118]);
+
+function getChaosLevel(t) {
+  if (t < 52.55) return 0.0;
+  const progress = Math.min(1.0, (t - 52.55) / (225.0 - 52.55));
+  return 0.22 + Math.pow(progress, 0.85) * 0.78;
+}
+
+const BOM_EVENTS = [];
+for (const barNum of INTRO_BOM_BARS) {
+  const barStart = barNum * BAR_SEC;
+  for (let hitIdx = 0; hitIdx < 4; hitIdx++) {
+    BOM_EVENTS.push({
+      t: barStart + BOM_OFFSETS[hitIdx],
+      bar: barNum,
+      hitIdx,
+      isIntro: true,
+      explodeAt: barStart + 1.28
+    });
+  }
+}
+for (const barNum of WORD_BOM_BARS) {
+  const barStart = barNum * BAR_SEC;
+  for (let hitIdx = 0; hitIdx < 4; hitIdx++) {
+    BOM_EVENTS.push({
+      t: barStart + BOM_OFFSETS[hitIdx],
+      bar: barNum,
+      hitIdx,
+      isIntro: false,
+      explodeAt: barStart + 1.30
+    });
+  }
+}
+BOM_EVENTS.sort((a, b) => a.t - b.t);
+
+// ============================================================================
+// 3. DEMO STATE
+// ============================================================================
+const state = {
+  isPlaying: false,
+  hasStarted: false,
+  currentTime: 0,
+  lastBomIdx: -1,
+  lastTransientIdx: -1,
+  lastStep16Global: -1,
+  commentCursor: 0,
+  activeHitIdx: 0,
+  activePartId: 1,
+  word3DExplodeAt: -1,
+  word3DExploding: false,
+  // Audio / Rhythm Envelopes
+  kickEnv: 0,
+  snareEnv: 0,
+  hatEnv: 0,
+  answerSlamEnv: 0,
+  stampHammerEnv: 0,
+  glitchTear: 0,
+  invertEnv: 0,
+  subLevel: 0,
+  midLevel: 0,
+  highLevel: 0,
+  // Camera
+  camTargetPos: new THREE.Vector3(0, 1.5, 16),
+  camLook: new THREE.Vector3(0, 0.5, 0),
+  camTargetLook: new THREE.Vector3(0, 0.5, 0),
+  camRoll: 0,
+  camTargetRoll: 0
+};
+
+// ============================================================================
+// 4. WEB AUDIO API ENGINE
+// ============================================================================
+const audioEl = new Audio('song.m4a');
+audioEl.preload = 'auto';
+audioEl.loop = false;
+
+audioEl.addEventListener('ended', () => {
+  state.isPlaying = false;
+  state.hasStarted = false;
+  state.currentTime = 0;
+  dom.edgeProgress.style.width = '0%';
+  if (dom.aiTypingOverlay) dom.aiTypingOverlay.classList.add('hidden');
+  if (typeof word3DMesh !== 'undefined') word3DMesh.visible = false;
+  if (typeof heroMonument !== 'undefined') heroMonument.visible = false;
+  if (typeof arenaGroup !== 'undefined') arenaGroup.visible = false;
+  if (typeof updateIntroCubeFormation === 'function') updateIntroCubeFormation(0, 0);
+  dom.startScreen.classList.remove('hidden');
+});
+
+let audioCtx = null;
+let analyser = null;
+let freqData = new Uint8Array(128);
+let timeData = new Uint8Array(128);
+
+function ensureAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new Ctx();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.62;
+  const src = audioCtx.createMediaElementSource(audioEl);
+  src.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  timeData = new Uint8Array(analyser.frequencyBinCount);
+}
+
+function findIndexBefore(arr, t) {
+  let lo = 0;
+  let hi = arr.length - 1;
+  let ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid].t <= t) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return ans;
+}
+
+function seekTo(targetSec) {
+  const clamped = Math.max(0, Math.min(BEATMAP.duration - 0.5, targetSec));
+  audioEl.currentTime = clamped;
+  state.currentTime = clamped;
+  // Subtract 0.02s when indexing so an event right at targetSec (or Bar 0 at 0.06s) is never skipped
+  state.lastBomIdx = findIndexBefore(BOM_EVENTS, clamped - 0.02);
+  state.lastTransientIdx = findIndexBefore(BEATMAP.events, clamped - 0.02);
+  state.lastStep16Global = Math.floor(clamped / STEP16_SEC) - 1;
+  state.word3DExplodeAt = -1;
+
+  if (typeof heroMonument !== 'undefined') {
+    const seekBar = Math.floor(clamped / BAR_SEC);
+    state.commentCursor = Math.max(0, seekBar - 32);
+    const activeSeg = typeof getActive2DTextSegment === 'function' ? getActive2DTextSegment(seekBar) : null;
+    heroMonument.visible = (clamped >= 52.55 && !activeSeg);
+    arenaGroup.visible = (clamped >= 52.55 && !activeSeg);
+    if (dom.aiTypingOverlay) {
+      dom.aiTypingOverlay.classList.toggle('hidden', !activeSeg || !state.hasStarted);
+    }
+    if ((clamped < 52.55 || activeSeg) && typeof word3DMesh !== 'undefined') {
+      word3DMesh.visible = false;
+    }
+  }
+
+  if (clamped < 0.05 && typeof heroCubeMeta !== 'undefined') {
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      m.curPos.set(0, 0, 0);
+      m.targetPos.set(0, 0, 0);
+      m.curScale = i === 62 ? 4.4 : 0.001;
+      m.targetScale = i === 62 ? 4.4 : 0.001;
+    }
+    camera.position.set(0, 0, 15.5);
+  }
+}
+
+async function launchDemo(startSec = 0) {
+  ensureAudio();
+  state.hasStarted = true;
+  state.isPlaying = true;
+  dom.startScreen.classList.add('hidden');
+  seekTo(startSec);
+  try {
+    await audioEl.play();
+    // Reset indices again after play() resolves so no idle frame could advance lastBomIdx past Bar 0!
+    state.lastBomIdx = findIndexBefore(BOM_EVENTS, audioEl.currentTime - 0.02);
+    state.lastTransientIdx = findIndexBefore(BEATMAP.events, audioEl.currentTime - 0.02);
+    state.lastStep16Global = Math.floor(audioEl.currentTime / STEP16_SEC) - 1;
+  } catch (_e) {
+    state.isPlaying = false;
+  }
+}
+
+function togglePlay() {
+  if (!state.hasStarted) {
+    launchDemo(0);
+    return;
+  }
+  if (audioEl.paused) {
+    ensureAudio();
+    audioEl.play();
+    state.isPlaying = true;
+  } else {
+    audioEl.pause();
+    state.isPlaying = false;
+  }
+}
+
+// ============================================================================
+// 5. THREE.JS SCENE & POST-PROCESSING SHADER
+// ============================================================================
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+dom.webglContainer.appendChild(renderer.domElement);
+
+let renderTarget = new THREE.WebGLRenderTarget(
+  window.innerWidth * Math.min(window.devicePixelRatio, 2),
+  window.innerHeight * Math.min(window.devicePixelRatio, 2)
+);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04060c);
+scene.fog = new THREE.FogExp2(0x04060c, 0.016);
+
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 240);
+camera.position.set(0, 1.5, 16);
+
+const postScene = new THREE.Scene();
+const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const postUniforms = {
+  tDiffuse: { value: renderTarget.texture },
+  uTime: { value: 0 },
+  uChromatic: { value: 0.002 },
+  uGlitch: { value: 0.0 },
+  uZoomPunch: { value: 0.0 },
+  uInvert: { value: 0.0 },
+  uOverdrive: { value: 0.0 },
+  uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+};
+
+const postMat = new THREE.ShaderMaterial({
+  uniforms: postUniforms,
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uTime;
+    uniform float uChromatic;
+    uniform float uGlitch;
+    uniform float uZoomPunch;
+    uniform float uInvert;
+    uniform float uOverdrive;
+    uniform vec2 uResolution;
+    varying vec2 vUv;
+
+    float hash(float n) {
+      return fract(sin(n) * 43758.5453123);
+    }
+
+    void main() {
+      vec2 center = vUv - 0.5;
+      float r2 = dot(center, center);
+
+      // Base zoom-in (overscan) so barrel distortion, chromatic shift & glitch slices never clamp/stretch edge pixels
+      float zoomScale = 0.89 - uZoomPunch * 0.10 - uOverdrive * 0.05 - uGlitch * 0.08;
+      vec2 uv = 0.5 + center * zoomScale + center * r2 * (0.10 + uOverdrive * 0.14);
+
+      float sliceY = floor(uv.y * (30.0 + uOverdrive * 18.0) + uTime * 21.0);
+      float sliceNoise = hash(sliceY + floor(uTime * 38.0));
+      float edgeGuardX = 1.0 - smoothstep(0.32, 0.49, abs(center.x));
+      if (sliceNoise < uGlitch * 0.65) {
+        uv.x += (hash(sliceY * 4.3) - 0.5) * uGlitch * 0.18 * edgeGuardX;
+      }
+
+      vec2 shift = center * (uChromatic + r2 * uChromatic * 2.4);
+      shift.x += (sliceNoise - 0.5) * uGlitch * 0.025 * edgeGuardX;
+
+      float r = texture2D(tDiffuse, clamp(uv + shift, 0.001, 0.999)).r;
+      float g = texture2D(tDiffuse, clamp(uv, 0.001, 0.999)).g;
+      float b = texture2D(tDiffuse, clamp(uv - shift, 0.001, 0.999)).b;
+      vec3 col = vec3(r, g, b);
+
+      float scan = sin(uv.y * uResolution.y * 1.35 + uTime * 16.0) * 0.5 + 0.5;
+      col *= 1.0 - scan * (0.13 + uOverdrive * 0.12);
+
+      // Overdrive Post-Processing: Neon Contrast Boost, Posterize Pulse & Electric Edge Strobe
+      if (uOverdrive > 0.01) {
+        vec3 highContrast = smoothstep(0.04, 0.92, col) * (1.0 + uOverdrive * 0.32);
+        vec3 quantized = floor(highContrast * 5.0 + 0.5) / 5.0;
+        col = mix(col, mix(highContrast, quantized, 0.38 * uOverdrive), clamp(uOverdrive, 0.0, 1.0));
+
+        float edgeDist = smoothstep(0.12, 0.52, r2);
+        vec3 neonRim = mix(vec3(1.0, 0.0, 0.38), vec3(0.0, 0.94, 1.0), step(0.5, fract(uTime * 8.0)));
+        col += neonRim * edgeDist * uOverdrive * 0.55;
+      }
+
+      if (uInvert > 0.01) {
+        float invAmt = clamp(uInvert, 0.0, 1.0);
+        vec3 pureInv = vec3(1.0) - col;
+        vec3 neonInv = vec3(1.0 - col.g, 1.0 - col.b * 0.85, 1.0 - col.r);
+        vec3 targetInv = mix(pureInv, neonInv, step(0.5, fract(uTime * 6.0)));
+        col = mix(col, targetInv, invAmt);
+      }
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+});
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
+
+// ============================================================================
+// 6. LIGHTS & TEXTURE LOADERS
+// ============================================================================
+const ambientLight = new THREE.AmbientLight(0x7a9fd4, 2.0);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.2);
+dirLight.position.set(8, 16, 14);
+scene.add(dirLight);
+
+const redLight = new THREE.PointLight(0xff1234, 14, 65, 1.2);
+redLight.position.set(-10, 5, 10);
+scene.add(redLight);
+
+const blueLight = new THREE.PointLight(0x396ba5, 14, 65, 1.2);
+blueLight.position.set(10, -4, 10);
+scene.add(blueLight);
+
+const strobeLight = new THREE.PointLight(0xffdd00, 0, 75, 1.1);
+strobeLight.position.set(0, 8, 12);
+scene.add(strobeLight);
+
+const texLoader = new THREE.TextureLoader();
+const texCache = new Map();
+function loadTex(url) {
+  if (!url) return null;
+  if (texCache.has(url)) return texCache.get(url);
+  const t = texLoader.load(url, (loadedTex) => {
+    renderer.initTexture(loadedTex);
+  });
+  t.colorSpace = THREE.SRGBColorSpace;
+  texCache.set(url, t);
+  return t;
+}
+
+for (const c of ALL_AI_COMMENTS) {
+  if (c.screenshot) loadTex(c.screenshot);
+}
+for (const c of COMMUNITY_QUOTES) {
+  if (c.screenshot) loadTex(c.screenshot);
+}
+
+// Crisp 16x16 Minecraft-Style Pixelated Mipmapped Cube Textures
+const CUBE_TEX_SIZE = 16;
+const mfxCubeCanvas = document.createElement('canvas');
+mfxCubeCanvas.width = CUBE_TEX_SIZE;
+mfxCubeCanvas.height = CUBE_TEX_SIZE;
+const mfxCtx = mfxCubeCanvas.getContext('2d');
+const mfxCubeTex = new THREE.CanvasTexture(mfxCubeCanvas);
+mfxCubeTex.colorSpace = THREE.SRGBColorSpace;
+mfxCubeTex.magFilter = THREE.NearestFilter;
+mfxCubeTex.minFilter = THREE.NearestMipmapLinearFilter;
+mfxCubeTex.generateMipmaps = true;
+
+function drawAvatarCubeCanvas(ctx, imgEl) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#14243b';
+  ctx.fillRect(0, 0, CUBE_TEX_SIZE, CUBE_TEX_SIZE);
+  if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+    ctx.drawImage(imgEl, 0, 0, CUBE_TEX_SIZE, CUBE_TEX_SIZE);
+  }
+}
+
+function drawMfxCubeTexture(imgEl) {
+  drawAvatarCubeCanvas(mfxCtx, imgEl);
+  mfxCubeTex.needsUpdate = true;
+  renderer.initTexture(mfxCubeTex);
+}
+drawMfxCubeTexture(null);
+const mfxImg = new Image();
+mfxImg.onload = () => drawMfxCubeTexture(mfxImg);
+mfxImg.src = 'assets/mfx.gif';
+
+const avatarImgCache = new Map();
+const avatarCubeTexCache = new Map();
+let activeHeroItem = null;
+
+function getAvatarImg(avatarPath) {
+  const path = avatarPath || 'assets/avatars/mfx.gif';
+  if (avatarImgCache.has(path)) return avatarImgCache.get(path);
+  const img = new Image();
+  avatarImgCache.set(path, img);
+  img.onload = () => {
+    if (avatarCubeTexCache.has(path)) {
+      const entry = avatarCubeTexCache.get(path);
+      drawAvatarCubeCanvas(entry.ctx, img);
+      entry.tex.needsUpdate = true;
+      renderer.initTexture(entry.tex);
+    }
+    if (activeHeroItem) {
+      updateHeroProdMonument(activeHeroItem);
+    }
+  };
+  img.src = path;
+  return img;
+}
+
+function getAvatarCubeTex(avatarPath) {
+  const path = avatarPath || 'assets/avatars/mfx.gif';
+  if (avatarCubeTexCache.has(path)) return avatarCubeTexCache.get(path).tex;
+  const c = document.createElement('canvas');
+  c.width = CUBE_TEX_SIZE;
+  c.height = CUBE_TEX_SIZE;
+  const ctx = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  const img = getAvatarImg(path);
+  drawAvatarCubeCanvas(ctx, img);
+  tex.needsUpdate = true;
+  renderer.initTexture(tex);
+  avatarCubeTexCache.set(path, { c, ctx, tex });
+  return tex;
+}
+
+// Preload all unique avatar cube textures from HATER_KISSES & COMMUNITY_QUOTES
+for (let i = 0; i < HATER_KISSES.length; i++) {
+  getAvatarCubeTex(HATER_KISSES[i].avatarPath);
+}
+for (let i = 0; i < COMMUNITY_QUOTES.length; i++) {
+  getAvatarCubeTex(COMMUNITY_QUOTES[i].avatarPath);
+}
+
+// ============================================================================
+// 7. TRUE SMOOTH 3D EXTRUDED IMPACT TYPOGRAPHY ENGINE (NO CUBES!)
+// ============================================================================
+// Uses exact TrueType Bezier curves from Impact.ttf + THREE.ExtrudeGeometry
+// to build smooth, solid 3D letters matching the original Impact look
+// (crisp face color, razor-sharp outline collar, and deep neon 3D extrusion).
+const word3DMesh = new THREE.Group();
+word3DMesh.position.set(0, 0.5, 5.6);
+word3DMesh.visible = false;
+scene.add(word3DMesh);
+
+const activeWordLetters = [];
+const cachedWordTemplates = new Map();
+
+function traceGlyphCommands(pathOrShape, cmds, fontSize, offsetX, offsetY) {
+  for (let i = 0; i < cmds.length; i++) {
+    const cmd = cmds[i];
+    const op = cmd[0];
+    if (op === 'm') {
+      pathOrShape.moveTo(offsetX + cmd[1] * fontSize, offsetY + cmd[2] * fontSize);
+    } else if (op === 'l') {
+      pathOrShape.lineTo(offsetX + cmd[1] * fontSize, offsetY + cmd[2] * fontSize);
+    } else if (op === 'q') {
+      pathOrShape.quadraticCurveTo(
+        offsetX + cmd[1] * fontSize,
+        offsetY + cmd[2] * fontSize,
+        offsetX + cmd[3] * fontSize,
+        offsetY + cmd[4] * fontSize
+      );
+    }
+  }
+  pathOrShape.closePath();
+}
+
+function glyphToThreeShapes(ch, fontSize, offsetX, offsetY) {
+  const g = IMPACT_GLYPHS[ch] || IMPACT_GLYPHS[ch.toUpperCase()];
+  if (!g || !g.contours || g.contours.length === 0) return [];
+  const shapes = [];
+  for (let i = 0; i < g.contours.length; i++) {
+    const c = g.contours[i];
+    if (c.area < 0) {
+      const sh = new THREE.Shape();
+      traceGlyphCommands(sh, c.cmds, fontSize, offsetX, offsetY);
+      shapes.push(sh);
+    }
+  }
+  for (let i = 0; i < g.contours.length; i++) {
+    const c = g.contours[i];
+    if (c.area >= 0 && shapes.length > 0) {
+      const hole = new THREE.Path();
+      traceGlyphCommands(hole, c.cmds, fontSize, offsetX, offsetY);
+      shapes[0].holes.push(hole);
+    }
+  }
+  return shapes;
+}
+
+// Exact color & stroke styling from the original Impact typography:
+// Hit 0: White face, black stroke collar, hot pink 3D extrusion
+// Hit 1: Hot pink face, white stroke collar, electric cyan 3D extrusion
+// Hit 2: Electric cyan face, black stroke collar, hot pink 3D extrusion
+// Hit 3: Gold/yellow face, black stroke collar, hot pink/red 3D extrusion
+const WORD_HIT_STYLES = [
+  { face: 0xffffff, stroke: 0x05070c, side: 0xff0055, emissive: 0xcc0044, tiltZ: 0.0 },
+  { face: 0xff0055, stroke: 0xffffff, side: 0x00f0ff, emissive: 0x0099cc, tiltZ: 0.055 },
+  { face: 0x00f0ff, stroke: 0x05070c, side: 0xff0055, emissive: 0xcc0044, tiltZ: -0.055 },
+  { face: 0xffe600, stroke: 0x05070c, side: 0xff0055, emissive: 0xd90038, tiltZ: 0.0 }
+];
+
+// Shared precompiled materials for the 4 beat hit styles (zero runtime shader compilation when new words appear!)
+const WORD_HIT_MATERIALS = WORD_HIT_STYLES.map((style) => ({
+  faceMat: new THREE.MeshBasicMaterial({ color: style.face }),
+  sideMat: new THREE.MeshStandardMaterial({
+    color: style.side,
+    emissive: style.emissive,
+    emissiveIntensity: 0.65,
+    roughness: 0.18,
+    metalness: 0.45
+  }),
+  strokeMat: new THREE.MeshBasicMaterial({ color: style.stroke })
+}));
+
+// Shared per-character unit-em ExtrudeGeometry cache (extrudes each unique character only ONCE across the entire demo!)
+const cachedGlyphGeos = new Map();
+function getOrCreateGlyphGeos(ch) {
+  const glyphKey = IMPACT_GLYPHS[ch] ? ch : ch.toUpperCase();
+  if (cachedGlyphGeos.has(glyphKey)) return cachedGlyphGeos.get(glyphKey);
+  const g = IMPACT_GLYPHS[glyphKey];
+  if (!g || !g.contours || g.contours.length === 0) {
+    cachedGlyphGeos.set(glyphKey, null);
+    return null;
+  }
+  const shapes = glyphToThreeShapes(glyphKey, 1.0, -g.ha * 0.5, -0.39);
+  if (shapes.length === 0) {
+    cachedGlyphGeos.set(glyphKey, null);
+    return null;
+  }
+  const mainGeo = new THREE.ExtrudeGeometry(shapes, {
+    depth: 1.75,
+    bevelEnabled: true,
+    bevelThickness: 0.14,
+    bevelSize: 0.015,
+    bevelSegments: 5,
+    curveSegments: 16
+  });
+  mainGeo.translate(0, 0, -0.88);
+
+  const strokeGeo = new THREE.ExtrudeGeometry(shapes, {
+    depth: 1.9,
+    bevelEnabled: true,
+    bevelThickness: 0.12,
+    bevelSize: 0.044,
+    bevelSegments: 4,
+    curveSegments: 12
+  });
+  strokeGeo.translate(0, 0, -1.02);
+
+  const pair = { mainGeo, strokeGeo };
+  cachedGlyphGeos.set(glyphKey, pair);
+  return pair;
+}
+
+function getOrCreateWordTemplate(wordStr, hitIdx) {
+  const matIdx = hitIdx % 4;
+  const key = `${matIdx}:${wordStr}`;
+  if (cachedWordTemplates.has(key)) {
+    return cachedWordTemplates.get(key);
+  }
+
+  const style = WORD_HIT_STYLES[matIdx];
+  const { faceMat, sideMat, strokeMat } = WORD_HIT_MATERIALS[matIdx];
+  const lines = String(wordStr).split('\n');
+  const isMultiLine = lines.length > 1;
+
+  // Measure unscaled em width of the widest line so even 10-12 character words or multi-line banners auto-scale cleanly inside the camera frustum!
+  let maxEmWidth = 0;
+  for (let l = 0; l < lines.length; l++) {
+    const chars = Array.from(lines[l]);
+    let lineEm = 0;
+    for (let i = 0; i < chars.length; i++) {
+      const g = IMPACT_GLYPHS[chars[i]] || IMPACT_GLYPHS[chars[i]?.toUpperCase()] || IMPACT_GLYPHS[' '] || { ha: 0.35 };
+      lineEm += g.ha + (i < chars.length - 1 ? 0.045 : 0);
+    }
+    if (lineEm > maxEmWidth) maxEmWidth = lineEm;
+  }
+
+  const maxFont = isMultiLine ? 2.55 : 5.2;
+  const targetSpan = isMultiLine ? 9.4 : 7.8;
+  const fontSize = Math.min(maxFont, targetSpan / Math.max(1.25, maxEmWidth));
+  const zScale = isMultiLine ? 0.83 : 1.0;
+  const tracking = fontSize * 0.045;
+  const lineStepY = fontSize * 1.06;
+  const totalLinesHeight = (lines.length - 1) * lineStepY;
+
+  const letterDefs = [];
+
+  for (let l = 0; l < lines.length; l++) {
+    const chars = Array.from(lines[l]);
+    let totalWidth = 0;
+    const charAdvances = [];
+    for (let i = 0; i < chars.length; i++) {
+      const g = IMPACT_GLYPHS[chars[i]] || IMPACT_GLYPHS[chars[i]?.toUpperCase()] || IMPACT_GLYPHS[' '] || { ha: 0.35 };
+      const w = g.ha * fontSize;
+      charAdvances.push(w);
+      totalWidth += w + (i < chars.length - 1 ? tracking : 0);
+    }
+
+    const startX = -totalWidth * 0.5;
+    const lineCenterY = (totalLinesHeight * 0.5) - l * lineStepY;
+    let cursorX = startX;
+
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
+      const adv = charAdvances[i];
+      const centerX = cursorX + adv * 0.5;
+      const geoPair = getOrCreateGlyphGeos(ch);
+
+      if (geoPair) {
+        const letterHolder = new THREE.Group();
+
+        const mainMesh = new THREE.Mesh(geoPair.mainGeo, [faceMat, sideMat]);
+        mainMesh.scale.set(fontSize, fontSize, zScale);
+        letterHolder.add(mainMesh);
+
+        const strokeMesh = new THREE.Mesh(geoPair.strokeGeo, strokeMat);
+        strokeMesh.scale.set(fontSize, fontSize, zScale);
+        letterHolder.add(strokeMesh);
+
+        letterDefs.push({
+          holder: letterHolder,
+          bx: centerX,
+          by: lineCenterY,
+          bz: 0
+        });
+      }
+      cursorX += adv + tracking;
+    }
+  }
+
+  const tpl = { letterDefs, style, faceMat, sideMat, strokeMat, isMultiLine };
+  cachedWordTemplates.set(key, tpl);
+  return tpl;
+}
+
+function build3DWordVoxels(wordStr, hitIdx, crazyBlink = false) {
+  while (word3DMesh.children.length > 0) {
+    word3DMesh.remove(word3DMesh.children[0]);
+  }
+  activeWordLetters.length = 0;
+
+  const template = getOrCreateWordTemplate(wordStr, hitIdx);
+  // Restore base colors before use
+  template.faceMat.color.setHex(template.style.face);
+  template.sideMat.color.setHex(template.style.side);
+  template.sideMat.emissive.setHex(template.style.emissive);
+  template.sideMat.emissiveIntensity = 0.65;
+  template.strokeMat.color.setHex(template.style.stroke);
+
+  state.activeWordTemplate = template;
+  state.word3DCrazyBlink = Boolean(crazyBlink);
+
+  for (let i = 0; i < template.letterDefs.length; i++) {
+    const def = template.letterDefs[i];
+    def.holder.position.set(def.bx, def.by, def.bz);
+    def.holder.rotation.set(0, 0, 0);
+    def.holder.scale.set(1, 1, 1);
+    word3DMesh.add(def.holder);
+
+    activeWordLetters.push({
+      holder: def.holder,
+      bx: def.bx,
+      by: def.by,
+      bz: def.bz,
+      vx: (def.bx * 1.8) + (Math.random() - 0.5) * 8.0,
+      vy: (def.by * 1.6) + (Math.random() - 0.3) * 14.0,
+      vz: 14.0 + Math.random() * 12.0,
+      rx: (Math.random() - 0.5) * 9.0,
+      ry: (Math.random() - 0.5) * 9.0,
+      rz: (Math.random() - 0.5) * 6.0
+    });
+  }
+
+  word3DMesh.visible = true;
+  state.word3DExploding = false;
+}
+
+// ============================================================================
+// 8. PROMINENT 3D POUËT DEMO PROD & BBS TOPIC MONUMENTS
+// ============================================================================
+function wrapCanvasLines(ctx, text, maxWidth, maxLines) {
+  const words = (text || '').replace(/\s+/g, ' ').trim().split(' ');
+  const lines = [];
+  let current = '';
+  for (let i = 0; i < words.length; i++) {
+    const test = current ? `${current} ${words[i]}` : words[i];
+    if (ctx.measureText(test).width > maxWidth && current) {
+      lines.push(current);
+      current = words[i];
+      if (lines.length >= maxLines - 1) {
+        const rest = [current, ...words.slice(i + 1)].join(' ');
+        lines.push(rest.length > 64 ? `${rest.slice(0, 61)}...` : rest);
+        return lines;
+      }
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function drawProdHeaderCanvas(canvas, ctx, item) {
+  const isKisses = item.sourceType === 'kisses';
+  const isTopic = item.sourceType === 'topic';
+  ctx.fillStyle = isKisses ? '#3a0826' : (isTopic ? '#1e1436' : '#14243b');
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = isKisses ? '#cc0055' : (isTopic ? '#641846' : '#224488');
+  ctx.fillRect(0, 0, canvas.width, 54);
+  ctx.strokeStyle = isKisses ? '#ffdd00' : (isTopic ? '#ff0055' : '#7aa6d8');
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+  // Title (Prod Name, BBS Topic Title, or Valentine Kisses Dedication)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 50px "Space Grotesk", Impact, sans-serif';
+  ctx.textAlign = 'left';
+  const titleStr = (item.prodName || 'POUËT PROD').toUpperCase().slice(0, 29);
+  ctx.fillText(titleStr, 24, 116);
+
+  // Group / Topic / Valentine Award subtitle
+  ctx.fillStyle = '#ffdd00';
+  ctx.font = 'bold 26px monospace';
+  const groupsArr = Array.isArray(item.groups) ? item.groups : [item.group || 'SCENE'];
+  const partyTxt = item.party ? `${item.party} ${item.partyYear || ''} (${item.partyCompo || ''})` : '';
+  const subLine = isKisses
+    ? `AWARD :: ${item.award || 'CERTIFIED POUËT HATER <3'}`
+    : (isTopic
+      ? `POUËT.NET BBS THREAD // TOPIC.PHP?WHICH=${item.topicId} // POST #${item.postId}`
+      : `BY ${groupsArr.join(' & ').toUpperCase()} // ${partyTxt}`.slice(0, 56));
+  ctx.fillText(subLine, 24, 162);
+
+  // Top bar metadata
+  ctx.fillStyle = isKisses ? '#fff0f8' : '#b8d8ff';
+  ctx.font = 'bold 24px monospace';
+  const authorName = item.author || 'uncle-x';
+  const topMeta = isKisses
+    ? `<3 SENDING KISSES & BIG LOVE TO @${authorName.toUpperCase()} (WHO=${item.userId}) <3`
+    : (isTopic
+      ? `POUËT BBS FLAMEWAR :: TOPIC #${item.topicId} :: FEATURING @${authorName.toUpperCase()}`
+      : `POUËT.NET PROD #${item.prodId} :: AVG ${item.voteavg || '-'} (👎 ${item.votedown || '0'}) :: @${authorName.toUpperCase()}`);
+  ctx.fillText(topMeta.slice(0, 62), 24, 36);
+}
+
+function drawProdCommentCanvas(canvas, ctx, item) {
+  const isKisses = item.sourceType === 'kisses';
+  const isTopic = item.sourceType === 'topic';
+  ctx.fillStyle = isKisses ? '#2d061e' : '#162742';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = isKisses ? '#ff0066' : (isTopic ? '#8c1248' : (item.vote === 'sucks' ? '#b81028' : '#224488'));
+  ctx.fillRect(0, 0, canvas.width, 60);
+
+  ctx.strokeStyle = isKisses ? '#ffdd00' : (isTopic ? '#00f0ff' : '#ff1234');
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+  const avImg = getAvatarImg(item.avatarPath || 'assets/avatars/mfx.gif');
+  if (avImg && avImg.complete && avImg.naturalWidth > 0) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(14, 7, 46, 46);
+    ctx.drawImage(avImg, 16, 9, 42, 42);
+  }
+
+  const authorName = item.author || 'uncle-x';
+  const uid = item.userId || '751';
+  const badgeStr = isKisses
+    ? 'WE LOVE YOU <3 XOXO'
+    : (isTopic ? `BBS TOPIC #${item.topicId}` : `voted: ${(item.vote || 'sucks').toUpperCase()}`);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 27px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${authorName} (who=${uid}) // ${badgeStr} // ${item.date || '2026'}`, 74, 39);
+
+  // Render quote text cleanly with multi-line wrapping
+  const commentText = isKisses ? (item.kissNote || item.comment || '') : (item.comment || '');
+  if (commentText.length <= 42) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 54px "Space Grotesk", Impact, sans-serif';
+    ctx.fillText(commentText, 26, 148, canvas.width - 52);
+  } else {
+    ctx.font = 'bold 31px "Space Grotesk", Tahoma, sans-serif';
+    const wrapped = wrapCanvasLines(ctx, commentText, canvas.width - 56, 4);
+    for (let i = 0; i < wrapped.length; i++) {
+      ctx.fillStyle = i === 0 ? '#ffffff' : '#ffdd00';
+      ctx.fillText(wrapped[i], 28, 106 + i * 38, canvas.width - 56);
+    }
+  }
+}
+
+// High-Res 3D Screen Renderer for Pouët BBS Topic Threads (13101, 13104, 13069) & Part X Kisses Shrine
+const heroTopicCanvas = document.createElement('canvas');
+heroTopicCanvas.width = 1024;
+heroTopicCanvas.height = 512;
+const heroTopicCtx = heroTopicCanvas.getContext('2d');
+const heroTopicTex = new THREE.CanvasTexture(heroTopicCanvas);
+heroTopicTex.colorSpace = THREE.SRGBColorSpace;
+
+function drawTopicScreenCanvas(item) {
+  const ctx = heroTopicCtx;
+  ctx.fillStyle = '#0d1829';
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Pouet table header
+  ctx.fillStyle = '#224488';
+  ctx.fillRect(12, 12, 1000, 48);
+  ctx.strokeStyle = '#6090c8';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(12, 12, 1000, 488);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 26px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`pouët.net BBS :: topic.php?which=${item.topicId} — "${item.topicTitle}"`, 28, 44);
+
+  const posts = (item.threadContext && item.threadContext.length > 0)
+    ? item.threadContext
+    : [{ author: item.author, avatarPath: item.avatarPath, date: item.date, comment: item.comment }];
+
+  let y = 74;
+  const boxH = Math.floor((410 - (posts.length - 1) * 12) / posts.length);
+
+  for (let i = 0; i < posts.length; i++) {
+    const p = posts[i];
+    const isFeatured = i === posts.length - 1;
+    ctx.fillStyle = isFeatured ? '#2b1432' : '#182c48';
+    ctx.fillRect(24, y, 976, boxH);
+    ctx.strokeStyle = isFeatured ? '#ff0055' : '#396ba5';
+    ctx.lineWidth = isFeatured ? 5 : 2;
+    ctx.strokeRect(24, y, 976, boxH);
+
+    // Draw avatar
+    const av = getAvatarImg(p.avatarPath || 'assets/avatars/mfx.gif');
+    if (av && av.complete && av.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(38, y + 14, 52, 52);
+      ctx.drawImage(av, 40, y + 16, 48, 48);
+    }
+
+    ctx.fillStyle = isFeatured ? '#ffdd00' : '#8ab8f0';
+    ctx.font = 'bold 23px monospace';
+    ctx.fillText(`@${p.author}  ::  posted on ${p.date || '2026'}`, 104, y + 36);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = isFeatured ? 'bold 26px Tahoma, sans-serif' : '22px Tahoma, sans-serif';
+    const lines = wrapCanvasLines(ctx, p.comment, 865, isFeatured ? 3 : 2);
+    for (let l = 0; l < lines.length; l++) {
+      ctx.fillText(lines[l], 104, y + 68 + l * 30, 865);
+    }
+    y += boxH + 12;
+  }
+  heroTopicTex.needsUpdate = true;
+}
+
+function drawKissesScreenCanvas(item) {
+  const ctx = heroTopicCtx;
+  const grad = ctx.createLinearGradient(0, 0, 1024, 512);
+  grad.addColorStop(0, '#2a041a');
+  grad.addColorStop(0.5, '#4c072b');
+  grad.addColorStop(1, '#200314');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Clean single border
+  ctx.strokeStyle = '#ff0066';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(14, 14, 996, 484);
+
+  // Crisp Pixel-Art Hater Avatar on the Left
+  const av = getAvatarImg(item.avatarPath || 'assets/avatars/mfx.gif');
+  if (av && av.complete && av.naturalWidth > 0) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(av, 68, 136, 240, 240);
+  }
+
+  // Handle & Single Quote on the Right (minimal, zero extra boxes or banners)
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffdd00';
+  ctx.font = '900 64px Impact, sans-serif';
+  ctx.fillText(`@${(item.author || 'uncle-x').toUpperCase()}`, 354, 196);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 31px Tahoma, sans-serif';
+  const lines = wrapCanvasLines(ctx, `"${item.comment || ''}"`, 600, 3);
+  for (let l = 0; l < lines.length; l++) {
+    ctx.fillText(lines[l], 354, 266 + l * 44, 600);
+  }
+
+  heroTopicTex.needsUpdate = true;
+}
+
+// Create the Giant Centerpiece 3D Hero Prod Monument (15 units wide x 11 units tall!)
+const heroMonument = new THREE.Group();
+heroMonument.position.set(0, 0.3, -1.5);
+heroMonument.visible = false;
+scene.add(heroMonument);
+
+const heroHeaderCanvas = document.createElement('canvas');
+heroHeaderCanvas.width = 1024;
+heroHeaderCanvas.height = 192;
+const heroHeaderCtx = heroHeaderCanvas.getContext('2d');
+const heroHeaderTex = new THREE.CanvasTexture(heroHeaderCanvas);
+heroHeaderTex.colorSpace = THREE.SRGBColorSpace;
+
+const heroCommentCanvas = document.createElement('canvas');
+heroCommentCanvas.width = 1024;
+heroCommentCanvas.height = 256;
+const heroCommentCtx = heroCommentCanvas.getContext('2d');
+const heroCommentTex = new THREE.CanvasTexture(heroCommentCanvas);
+heroCommentTex.colorSpace = THREE.SRGBColorSpace;
+
+const monumentFrameMat = new THREE.MeshStandardMaterial({
+  color: 0x264878,
+  roughness: 0.25,
+  metalness: 0.75,
+  emissive: 0x102240,
+  emissiveIntensity: 0.6
+});
+const monumentRimMat = new THREE.MeshStandardMaterial({
+  color: 0xff1234,
+  roughness: 0.2,
+  metalness: 0.8,
+  emissive: 0xff1234,
+  emissiveIntensity: 0.65
+});
+
+// Top 3D Header Beam
+const heroHeaderMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(14.8, 2.3, 0.9),
+  [monumentRimMat, monumentRimMat, monumentFrameMat, monumentFrameMat, new THREE.MeshBasicMaterial({ map: heroHeaderTex }), monumentFrameMat]
+);
+heroHeaderMesh.position.set(0, 4.9, 0.2);
+heroMonument.add(heroHeaderMesh);
+
+// Giant 3D Screenshot / BBS Thread Display Screen (14.4 x 7.4 units!)
+const heroScreenBacking = new THREE.Mesh(new THREE.BoxGeometry(15.0, 7.8, 0.7), monumentFrameMat);
+heroScreenBacking.position.set(0, 0.1, -0.2);
+heroMonument.add(heroScreenBacking);
+
+const heroShotMat = new THREE.MeshBasicMaterial({
+  map: loadTex(EXACT_COMMENTS[0].screenshot),
+  color: 0xffffff
+});
+const heroShotScreen = new THREE.Mesh(new THREE.PlaneGeometry(14.2, 7.2), heroShotMat);
+heroShotScreen.position.set(0, 0.1, 0.2);
+heroMonument.add(heroShotScreen);
+
+// Bottom 3D Comment Pedestal Slab
+const heroCommentMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(14.8, 3.1, 1.1),
+  [monumentRimMat, monumentRimMat, monumentFrameMat, monumentFrameMat, new THREE.MeshBasicMaterial({ map: heroCommentTex }), monumentFrameMat]
+);
+heroCommentMesh.position.set(0, -4.8, 0.45);
+heroMonument.add(heroCommentMesh);
+
+// 2 Spinning 3D Pylon Cubes flanking the Hero Prod Monument (dynamically show the current hater's avatar!)
+const leftPylonMat = new THREE.MeshStandardMaterial({ map: mfxCubeTex });
+const rightPylonMat = new THREE.MeshStandardMaterial({ map: mfxCubeTex });
+const leftPylon = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 2.0), leftPylonMat);
+leftPylon.position.set(-8.8, 4.6, 0.8);
+const rightPylon = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 2.0), rightPylonMat);
+rightPylon.position.set(8.8, 4.6, 0.8);
+heroMonument.add(leftPylon, rightPylon);
+
+// Giant 3D Red Stamp Hammer that slams onto the 3D Prod/Topic Screen!
+const stampHammerCanvas = document.createElement('canvas');
+stampHammerCanvas.width = 512;
+stampHammerCanvas.height = 192;
+const stampHammerCtx = stampHammerCanvas.getContext('2d');
+const stampHammerTex = new THREE.CanvasTexture(stampHammerCanvas);
+stampHammerTex.colorSpace = THREE.SRGBColorSpace;
+
+const HATER_STAMP_ROASTS = {
+  'uncle-x': { top: 'MEAT PROXY SLOP', sub: 'UNCLE-X :: 1358 GLÖPS OF RAGE', bg: '#dc102c' },
+  '4gente': { top: 'GRANDPA FEELINGS', sub: '4GENTE :: 40 YEARS OF CRINGE', bg: '#b81038' },
+  'okkie': { top: 'DELETE THIS PROD', sub: 'OKKIE :: LIE MACHINE HUNTER', bg: '#cc1428' },
+  'fizzer': { top: '100% ORANGE PEEL', sub: 'FIZZER :: CHATBOT HOBBYIST', bg: '#d94e00' },
+  'maali': { top: 'EM-DASH DETECTED', sub: 'MAALI :: NEVER USE (—) AGAIN!', bg: '#c80048' },
+  'maalinstrippari': { top: 'EM-DASH DETECTED', sub: 'MAALI :: NEVER USE (—) AGAIN!', bg: '#c80048' },
+  'kaneel': { top: 'ZERO EFFORT SLOP', sub: 'KANEEL :: PROMPT != DEMOSCENE', bg: '#9e1040' },
+  'preacher': { top: '500TH PROMPT TRY', sub: 'PREACHER :: SOULLESS SLOT MACHINE', bg: '#7a1258' },
+  'nr4': { top: 'BENCHMARK FAILED', sub: 'NR4 :: 0% HUMAN CODE', bg: '#aa1030' },
+  'bitl': { top: 'GLENZ GRAVITY BUG', sub: 'BITL :: PHYSICS HALLUCINATED', bg: '#16528e' },
+  'havoc': { top: '4TH PLACE DOPING', sub: 'HAVOC :: THREAD LOCKED // RIP', bg: '#991824' }
+};
+
+const STAMP_PLACEMENTS = [
+  { x: 3.4, y: -1.25, rotZ: -0.14 },
+  { x: -3.4, y: 1.35, rotZ: 0.13 },
+  { x: -3.2, y: -1.35, rotZ: 0.15 },
+  { x: 3.5, y: 1.30, rotZ: -0.12 },
+  { x: 0.3, y: 1.50, rotZ: -0.08 },
+  { x: -2.6, y: 0.15, rotZ: -0.15 },
+  { x: 2.7, y: 0.10, rotZ: 0.14 },
+  { x: -0.4, y: -1.45, rotZ: 0.10 }
+];
+let stampPlacementCursor = 0;
+let stampBaseRotZ = -0.14;
+
+const stampRimAdditiveMat = new THREE.MeshBasicMaterial({
+  color: 0xff1234,
+  transparent: true,
+  opacity: 0.38,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const stampFaceAdditiveMat = new THREE.MeshBasicMaterial({
+  map: stampHammerTex,
+  transparent: true,
+  opacity: 0.96,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+
+const stamp3DHammer = new THREE.Mesh(
+  new THREE.BoxGeometry(6.8, 2.5, 0.55),
+  [stampRimAdditiveMat, stampRimAdditiveMat, stampRimAdditiveMat, stampRimAdditiveMat, stampFaceAdditiveMat, stampRimAdditiveMat]
+);
+stamp3DHammer.renderOrder = 5;
+stamp3DHammer.position.set(3.4, -1.25, 1.2);
+stamp3DHammer.rotation.z = stampBaseRotZ;
+heroMonument.add(stamp3DHammer);
+
+function repositionStampHammer() {
+  stampPlacementCursor = (stampPlacementCursor + 1 + Math.floor(Math.random() * 2)) % STAMP_PLACEMENTS.length;
+  const slot = STAMP_PLACEMENTS[stampPlacementCursor];
+  const jx = (Math.random() - 0.5) * 0.6;
+  const jy = (Math.random() - 0.5) * 0.45;
+  stamp3DHammer.position.x = slot.x + jx;
+  stamp3DHammer.position.y = slot.y + jy;
+  stampBaseRotZ = slot.rotZ + (Math.random() - 0.5) * 0.08;
+  stamp3DHammer.rotation.z = stampBaseRotZ;
+}
+
+function update3DStampHammer(item) {
+  repositionStampHammer();
+
+  const isKisses = item?.sourceType === 'kisses';
+  const isTopic = item?.sourceType === 'topic';
+  const handleKey = (item?.author || 'uncle-x').toLowerCase();
+  const roast = !isKisses ? HATER_STAMP_ROASTS[handleKey] : null;
+
+  const bgCol = isKisses
+    ? '#ff0066'
+    : (item?.customStamp?.bg || roast?.bg || (isTopic ? '#8c1248' : '#dc102c'));
+
+  // Base black (#000000 = transparent in AdditiveBlending) + translucent neon tint so screenshot shines through!
+  stampHammerCtx.globalAlpha = 1.0;
+  stampHammerCtx.fillStyle = '#000000';
+  stampHammerCtx.fillRect(0, 0, 512, 192);
+  stampHammerCtx.globalAlpha = 0.46;
+  stampHammerCtx.fillStyle = bgCol;
+  stampHammerCtx.fillRect(0, 0, 512, 192);
+  stampHammerCtx.globalAlpha = 1.0;
+
+  stampHammerCtx.strokeStyle = '#ffffff';
+  stampHammerCtx.lineWidth = 10;
+  stampHammerCtx.strokeRect(8, 8, 496, 176);
+
+  // Main stamp text in WHITE (#ffffff)
+  const toks = (item?.beatTokens && item.beatTokens.length === 4) ? item.beatTokens : null;
+  let line1 = '';
+  let line2 = '';
+  if (isKisses) {
+    line1 = 'MWAH // XOXO <3';
+    line2 = toks ? `${toks[0]} ${toks[1]} ${toks[2]}` : 'SENDING KISSES';
+  } else if (toks) {
+    line1 = `${toks[0]} ${toks[1]}`.trim();
+    line2 = `${toks[2]} ${toks[3]}`.trim();
+  } else if (roast) {
+    line1 = roast.top;
+    line2 = 'POUËT VERDICT';
+  } else {
+    line1 = isTopic ? 'BBS VERDICT' : 'SUCKS // AI';
+    line2 = 'THUMB DOWN';
+  }
+
+  stampHammerCtx.fillStyle = '#ffffff';
+  stampHammerCtx.textAlign = 'center';
+  stampHammerCtx.font = '900 46px Impact, sans-serif';
+  stampHammerCtx.fillText(line1, 256, 66, 468);
+  stampHammerCtx.fillText(line2, 256, 118, 468);
+
+  // Author in smaller font and different color (#ffdd00 / #00f0ff) at the bottom
+  const authorName = item?.author || 'uncle-x';
+  stampHammerCtx.fillStyle = isKisses ? '#ffdd00' : '#00f0ff';
+  stampHammerCtx.font = 'bold 20px monospace';
+  stampHammerCtx.fillText(`@${authorName}`, 256, 162, 468);
+
+  stampHammerTex.needsUpdate = true;
+}
+update3DStampHammer(COMMUNITY_QUOTES[0]);
+
+function updateHeroProdMonument(item) {
+  activeHeroItem = item;
+  const isKisses = item?.sourceType === 'kisses';
+
+  // In Part X (Kisses love finale), hide the top header beam, bottom comment slab, stamp box, and side pylons for a clean, minimal look!
+  heroHeaderMesh.visible = !isKisses;
+  heroCommentMesh.visible = !isKisses;
+  stamp3DHammer.visible = !isKisses;
+  leftPylon.visible = !isKisses;
+  rightPylon.visible = !isKisses;
+
+  if (!isKisses) {
+    drawProdHeaderCanvas(heroHeaderCanvas, heroHeaderCtx, item);
+    heroHeaderTex.needsUpdate = true;
+
+    drawProdCommentCanvas(heroCommentCanvas, heroCommentCtx, item);
+    heroCommentTex.needsUpdate = true;
+
+    update3DStampHammer(item);
+  }
+
+  // Switch the 2 flanking 3D Pylon Cubes to the current commenter's Pouët avatar!
+  const avCubeTex = getAvatarCubeTex(item.avatarPath || 'assets/avatars/mfx.gif');
+  leftPylonMat.map = avCubeTex;
+  rightPylonMat.map = avCubeTex;
+  leftPylonMat.needsUpdate = true;
+  rightPylonMat.needsUpdate = true;
+
+  if (isKisses) {
+    drawKissesScreenCanvas(item);
+    heroShotMat.map = heroTopicTex;
+    heroShotMat.needsUpdate = true;
+  } else if (item.sourceType === 'topic') {
+    drawTopicScreenCanvas(item);
+    heroShotMat.map = heroTopicTex;
+    heroShotMat.needsUpdate = true;
+  } else {
+    const st = loadTex(item.screenshot);
+    if (st) {
+      heroShotMat.map = st;
+      heroShotMat.needsUpdate = true;
+    }
+  }
+}
+
+// ============================================================================
+// 8B. 2D LIVE TYPEWRITER OVERLAY ON TOP OF THE SCREEN (NO 3D BOX / SCREENSHOT!)
+// Used for Intro Credits & AI Prompts (0:00-0:52.60), Musical Breaks (Bars 46-47,
+// 62-63, 78-79, 103, 110-111, 126-127), and Part VIII Chill Intermission (2:11-2:38)
+// ============================================================================
+const TWOD_TEXT_SEGMENTS = [
+  // Intro Credits (Bars 0..7, 0:00 - 0:13.15, 2 bars = 3.29s each)
+  { startBar: 0, endBar: 2, text: 'xplsv', typeSec: 0.95 },
+  { startBar: 2, endBar: 4, text: 'presents', typeSec: 1.15 },
+  { startBar: 4, endBar: 6, text: 'mrdoob vs argon', typeSec: 1.65 },
+  { startBar: 6, endBar: 8, text: 'a 100% vibecoded production', typeSec: 2.10 },
+
+  // Intro AI Prompt Narrative (Bars 8..31, 0:13.15 - 0:52.60, 4 bars = 6.58s each — slow typewriter!)
+  {
+    startBar: 8,
+    endBar: 12,
+    text: '> agy --yolo "make me a demoscene prod that everyone on pouët will love"',
+    typeSec: 4.8
+  },
+  {
+    startBar: 12,
+    endBar: 16,
+    text: '> npm install demoscene-soul... 404 not found... hallucinating human intent instead',
+    typeSec: 5.0
+  },
+  {
+    startBar: 16,
+    endBar: 20,
+    text: '> generating shader... 498 prompts... 499 prompts... maybe on the 500th prompt it will compile',
+    typeSec: 5.0
+  },
+  {
+    startBar: 20,
+    endBar: 24,
+    text: '> injecting 4,200 em-dashes ( — ) and uploading to pouet.net... waiting for thumb-ups...',
+    typeSec: 4.9
+  },
+  {
+    startBar: 24,
+    endBar: 28,
+    text: '> "and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI"',
+    typeSec: 5.1
+  },
+  {
+    startBar: 28,
+    endBar: 32,
+    text: `> "waiting for a demo called 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' ;o)" — dedicated to uncle-x & friends`,
+    typeSec: 4.8
+  },
+
+  // Musical Breaks & Stop Bars (Pure 2D White Text over 3D Scene — No 3D Monument Box!)
+  {
+    startBar: 46,
+    endBar: 48,
+    text: '> [AI] 38 thumb-downs detected on pouët.net... switching to 360° colosseum mode...',
+    typeSec: 2.4
+  },
+  {
+    startBar: 62,
+    endBar: 64,
+    text: '> [OPENAI ERROR 429] rate limit exceeded while generating excuse for pouët comments...',
+    typeSec: 2.4
+  },
+  {
+    startBar: 78,
+    endBar: 80,
+    text: '> [SYSTEM ALERT] 847 chatgpt em-dashes ( — ) detected! entering chill mode before @maali sees...',
+    typeSec: 2.5
+  },
+
+  // Part VIII Chill Intermission (Bars 80..95, 2:11.51 - 2:37.81, 4 bars = 6.58s each — slow typewriter!)
+  {
+    startBar: 80,
+    endBar: 84,
+    text: '> "if you just vibecode a demo then your hobby isn\'t demomaking. your hobby is talking to a chatbot." — @fizzer',
+    typeSec: 5.0,
+    avatarPath: 'assets/avatars/fizzer_pouet.gif'
+  },
+  {
+    startBar: 84,
+    endBar: 88,
+    text: '> "\'idea men\' could never actually do anything so they were harmless — now with AI they think they\'re creators." — @uncle-x',
+    typeSec: 5.1,
+    avatarPath: 'assets/avatars/mfx.gif'
+  },
+  {
+    startBar: 88,
+    endBar: 92,
+    text: '> "it\'s called reverse centaur. this slavish oiling of the machine, while the machine is the creator." — @4gentE',
+    typeSec: 5.0,
+    avatarPath: 'assets/avatars/yellow_arrow.gif'
+  },
+  {
+    startBar: 92,
+    endBar: 96,
+    text: `> "i don't think 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' demo will be shown on twitch..." — @leGend`,
+    typeSec: 5.0,
+    avatarPath: 'assets/avatars/legend_wizard2.gif'
+  },
+
+  // Part IX Breakdown & Transition Breaks (Bars 110..111, 126..127, 142..143)
+  {
+    startBar: 110,
+    endBar: 112,
+    text: '> [BILLING ALERT] out of token credits... auto-charging $20.00 to finish this overdrive part...',
+    typeSec: 2.3
+  },
+  {
+    startBar: 126,
+    endBar: 128,
+    text: '> [MOD ALERT] 800+ pouët forum replies detected... @havoc is reaching for the lock button...',
+    typeSec: 2.4
+  },
+  {
+    startBar: 142,
+    endBar: 144,
+    text: '> [SYSTEM OVERRIDE] rage buffer full... switching AI to unconditional love mode for our favorite haters <3',
+    typeSec: 2.5
+  }
+];
+
+function getActive2DTextSegment(barNum) {
+  for (let i = 0; i < TWOD_TEXT_SEGMENTS.length; i++) {
+    const s = TWOD_TEXT_SEGMENTS[i];
+    if (barNum >= s.startBar && barNum < s.endBar) return s;
+  }
+  return null;
+}
+
+const CRAZY_BLINK_COLORS = ['#ffffff', '#ff0055', '#00f0ff', '#ffdd00'];
+
+function update2DAiTypewriter(t, currentBar) {
+  if (!dom.aiTypingOverlay) return;
+  if (!state.hasStarted) {
+    dom.aiTypingOverlay.classList.add('hidden');
+    return;
+  }
+
+  const seg = getActive2DTextSegment(currentBar);
+  if (!seg) {
+    dom.aiTypingOverlay.classList.add('hidden');
+    dom.aiTypingText.classList.remove('crazy-blink');
+    dom.aiTypingText.style.transform = '';
+    dom.aiTypingText.style.color = '';
+    dom.aiTypingText.style.opacity = '';
+    return;
+  }
+
+  dom.aiTypingOverlay.classList.remove('hidden');
+
+  const elapsed = Math.max(0, t - seg.startBar * BAR_SEC);
+  const progress = Math.min(1.0, elapsed / Math.max(0.15, seg.typeSec || 3.5));
+
+  if (seg.crazyBlink) {
+    dom.aiTypingText.classList.add('crazy-blink');
+    const strobeTick = Math.floor(t * 24.0);
+    const isOff = strobeTick % 3 === 2;
+    const col = CRAZY_BLINK_COLORS[strobeTick % CRAZY_BLINK_COLORS.length];
+    const jx = ((strobeTick * 17) % 11 - 5) * 2.2;
+    const jy = ((strobeTick * 31) % 11 - 5) * 1.8;
+    const sc = 1.0 + (strobeTick % 2) * 0.12;
+    dom.aiTypingText.style.opacity = isOff ? '0.08' : '1.0';
+    dom.aiTypingText.style.color = col;
+    dom.aiTypingText.style.transform = `translate(${jx}px, ${jy}px) scale(${sc})`;
+    const chars = Math.floor(seg.text.length * progress);
+    dom.aiTypingText.textContent = seg.text.slice(0, chars);
+    if (strobeTick % 2 === 0) {
+      state.invertEnv = Math.max(state.invertEnv, 0.95);
+      state.glitchTear = Math.max(state.glitchTear, 0.85);
+    }
+  } else {
+    dom.aiTypingText.classList.remove('crazy-blink');
+    dom.aiTypingText.style.transform = '';
+    dom.aiTypingText.style.color = '#ffffff';
+    dom.aiTypingText.style.opacity = '1.0';
+    const chars = Math.floor(seg.text.length * progress);
+    dom.aiTypingText.textContent = seg.text.slice(0, chars);
+  }
+}
+
+const STOP_BAR_GAGS = {
+  62: {
+    headerSub: '[ OPENAI / CLAUDE API ERROR 429 // RATE LIMIT EXCEEDED ]',
+    headerTitle: 'CHATGPT IS THINKING... (HALLUCINATING EXCUSE)',
+    screenTitle: 'HOLD ON — GENERATING EXCUSE FOR POUËT COMMENTS...',
+    screenLines: [
+      '> Prompt: "Write a 5-paragraph defense explaining why vibecoding is real art"',
+      '> [ERROR] Empathy module not found. Grandpa feelings overflow (sorry @4gentE)',
+      '> [RETRY] Re-routing through 7-fingered meat proxy server...'
+    ],
+    footer: 'PLEASE WAIT WHILE THE LIE MACHINE REBOOTS...',
+    stamp: { top: 'THINKING...', sub: '0% HUMAN EFFORT', bg: '#7a00cc', border: '#ffdd00' }
+  },
+  78: {
+    headerSub: '[ EMERGENCY EM-DASH SANITIZER v2.0 ENGAGED ]',
+    headerTitle: 'SCRUBBING 1,337 EM-DASHES ( — ) BEFORE @MAALI SEES!',
+    screenTitle: 'SYSTEM PROMPT VIOLATION: EM-DASH DETECTED!',
+    screenLines: [
+      '> Scanning .NFO and Pouët description for forbidden " — " characters...',
+      '> Found 847 ChatGPT em-dashes! Replacing with human typos...',
+      '> Adding "NEVER EVER USE EMDASHES!!!" to system prompt...'
+    ],
+    footer: '@MAALINSTRIPPARI IS JUDGING OUR LAZINESS RIGHT NOW!',
+    stamp: { top: 'EM-DASH PANIC', sub: 'SORRY @MAALI!', bg: '#c80048', border: '#ffffff' }
+  },
+  103: {
+    headerSub: '[ ANTHROPIC BILLING ALERT // OUT OF VIBECODE CREDITS ]',
+    headerTitle: 'AUTO-CHARGING $20.00 TO FINISH THIS OVERDRIVE PART!',
+    screenTitle: 'INSERTING MORE COINS INTO THE SOULLESS SLOT MACHINE...',
+    screenLines: [
+      '> Warning: 500th prompt attempt failed to impress @Preacher & @NR4',
+      '> Purchasing 10,000,000 extra tokens of pure orange peel (@fizzer)...',
+      '> Engaging Maximum Overdrive Invert Strobe...'
+    ],
+    footer: 'OUR HOBBY IS TALKING TO A CHATBOT ($20/MONTH)',
+    stamp: { top: '$20 CHARGED', sub: '501ST PROMPT CHARM', bg: '#b85c00', border: '#ffdd00' }
+  },
+  126: {
+    headerSub: '[ SYSTEM PROMPT OVERRIDE: RAGE -> UNCONDITIONAL LOVE ]',
+    headerTitle: 'LOADING VALENTINE KISSES FOR ALL MAIN HATERS! <3',
+    screenTitle: 'DISENGAGING SLOP GRINDER... PREPARING SMOOCHES! <3',
+    screenLines: [
+      '> Target list locked: @uncle-x, @4gentE, @okkie, @fizzer, @maali,',
+      '> @kaneel, @Preacher, @NR4, @bitl, @havoc!',
+      '> Deploying 100% bio-centric Valentine cards & 3D hearts in 3... 2... 1...'
+    ],
+    footer: 'GET READY FOR PART X: SENDING KISSES TO THE HATERS <3 MWAH!',
+    stamp: { top: 'MWAH INCOMING', sub: 'VALENTINE MODE <3', bg: '#ff0066', border: '#ffdd00' }
+  }
+};
+
+function drawStopBarGagScreen(barNum) {
+  const gag = STOP_BAR_GAGS[barNum];
+  if (!gag) return;
+
+  // 1) Top Header
+  heroHeaderCtx.fillStyle = gag.stamp.bg;
+  heroHeaderCtx.fillRect(0, 0, 1024, 192);
+  heroHeaderCtx.strokeStyle = '#ffdd00';
+  heroHeaderCtx.lineWidth = 10;
+  heroHeaderCtx.strokeRect(8, 8, 1008, 176);
+  heroHeaderCtx.fillStyle = '#ffdd00';
+  heroHeaderCtx.font = 'bold 27px monospace';
+  heroHeaderCtx.textAlign = 'left';
+  heroHeaderCtx.fillText(gag.headerSub, 28, 54, 968);
+  heroHeaderCtx.fillStyle = '#ffffff';
+  heroHeaderCtx.font = '900 54px Impact, sans-serif';
+  heroHeaderCtx.fillText(gag.headerTitle, 28, 138, 968);
+  heroHeaderTex.needsUpdate = true;
+
+  // 2) Main Screen
+  const ctx = heroTopicCtx;
+  ctx.fillStyle = '#140620';
+  ctx.fillRect(0, 0, 1024, 512);
+  ctx.strokeStyle = '#ffdd00';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(12, 12, 1000, 488);
+
+  ctx.fillStyle = gag.stamp.bg;
+  ctx.fillRect(24, 24, 976, 74);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 40px Impact, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(gag.screenTitle, 512, 76, 940);
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 26px monospace';
+  for (let i = 0; i < gag.screenLines.length; i++) {
+    ctx.fillStyle = i === 1 ? '#ffdd00' : '#00f0ff';
+    ctx.fillText(gag.screenLines[i], 42, 175 + i * 95, 940);
+  }
+  heroTopicTex.needsUpdate = true;
+  heroShotMat.map = heroTopicTex;
+  heroShotMat.needsUpdate = true;
+
+  // 3) Bottom Comment Slab
+  heroCommentCtx.fillStyle = '#1f0418';
+  heroCommentCtx.fillRect(0, 0, 1024, 256);
+  heroCommentCtx.strokeStyle = '#ff0066';
+  heroCommentCtx.lineWidth = 8;
+  heroCommentCtx.strokeRect(8, 8, 1008, 240);
+  heroCommentCtx.fillStyle = '#ffdd00';
+  heroCommentCtx.font = '900 46px Impact, sans-serif';
+  heroCommentCtx.textAlign = 'center';
+  heroCommentCtx.fillText(gag.footer, 512, 145, 952);
+  heroCommentTex.needsUpdate = true;
+
+  // 4) 3D Stamp Hammer
+  update3DStampHammer({ customStamp: gag.stamp });
+  state.stampHammerEnv = 1.35;
+}
+updateHeroProdMonument(PROD_QUOTES[0]);
+
+// ============================================================================
+// 9. 16 GIANT ARCHITECTURAL ARENA MONUMENTS (PRODS + BBS TOPICS + ALL HATERS)
+// ============================================================================
+const arenaGroup = new THREE.Group();
+arenaGroup.visible = false;
+scene.add(arenaGroup);
+
+const arenaMonuments = [];
+const ARENA_COUNT = 16;
+const arenaBoxGeo = new THREE.BoxGeometry(8.4, 5.6, 0.5);
+const arenaLabelGeo = new THREE.PlaneGeometry(8.0, 1.8);
+
+for (let i = 0; i < ARENA_COUNT; i++) {
+  const item = PROD_QUOTES[i % PROD_QUOTES.length];
+  const g = new THREE.Group();
+
+  const shotTex = loadTex(item.screenshot || EXACT_COMMENTS[i % EXACT_COMMENTS.length].screenshot);
+  const screenMesh = new THREE.Mesh(
+    arenaBoxGeo,
+    [monumentFrameMat, monumentFrameMat, monumentFrameMat, monumentFrameMat, new THREE.MeshBasicMaterial({ map: shotTex }), monumentFrameMat]
+  );
+  g.add(screenMesh);
+
+  // Comment & Author Banner above each arena monument
+  const lc = document.createElement('canvas');
+  lc.width = 512;
+  lc.height = 128;
+  const lctx = lc.getContext('2d');
+  drawProdCommentCanvas(lc, lctx, item);
+  const ltex = new THREE.CanvasTexture(lc);
+  ltex.colorSpace = THREE.SRGBColorSpace;
+  const lmesh = new THREE.Mesh(arenaLabelGeo, new THREE.MeshBasicMaterial({ map: ltex }));
+  lmesh.position.set(0, 3.6, 0.3);
+  g.add(lmesh);
+
+  g.userData = { index: i, item, lc, lctx, ltex, screenMesh };
+  arenaGroup.add(g);
+  arenaMonuments.push(g);
+}
+
+// ============================================================================
+// 10. INTRO & STAGE ELEMENTS: 125 MFX CUBES, 64 FFT TOWERS, LASERS, WAVE RINGS
+// ============================================================================
+const HERO_CUBE_COUNT = 125;
+const heroCubeGeo = new THREE.BoxGeometry(1.25, 1.25, 1.25);
+const heroCubeMat = new THREE.MeshStandardMaterial({
+  map: mfxCubeTex,
+  roughness: 0.2,
+  metalness: 0.35
+});
+const heroCubesMesh = new THREE.InstancedMesh(heroCubeGeo, heroCubeMat, HERO_CUBE_COUNT);
+scene.add(heroCubesMesh);
+
+const heroCubeMeta = [];
+for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+  const gx = (i % 5) - 2;
+  const gy = (Math.floor(i / 5) % 5) - 2;
+  const gz = Math.floor(i / 25) - 2;
+  const phi = Math.acos(1 - 2 * (i + 0.5) / HERO_CUBE_COUNT);
+  const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+  heroCubeMeta.push({
+    gx,
+    gy,
+    gz,
+    phi,
+    theta,
+    curPos: new THREE.Vector3(0, 0, 0),
+    targetPos: new THREE.Vector3(0, 0, 0),
+    curScale: i === 62 ? 4.4 : 0.001,
+    targetScale: i === 62 ? 4.4 : 0.001,
+    rotAxis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize()
+  });
+}
+
+// 64 Audio-Reactive 3D Equalizer Towers (synced to 64 FFT bins & hi-hats!)
+const EQ_COUNT = 64;
+const eqGeo = new THREE.BoxGeometry(0.65, 1.0, 0.65);
+const eqMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.2,
+  metalness: 0.85,
+  emissive: 0x224488,
+  emissiveIntensity: 0.5
+});
+const eqInstanced = new THREE.InstancedMesh(eqGeo, eqMat, EQ_COUNT);
+scene.add(eqInstanced);
+
+const eqColor = new THREE.Color();
+for (let i = 0; i < EQ_COUNT; i++) {
+  eqColor.setHex(i % 2 === 0 ? 0x396ba5 : 0xff1234);
+  eqInstanced.setColorAt(i, eqColor);
+}
+eqInstanced.instanceColor.needsUpdate = true;
+
+// 220 Outer Tunnel mfx.gif Cubes
+const OUTER_CUBE_COUNT = 220;
+const outerCubeGeo = new THREE.BoxGeometry(1.15, 1.15, 1.15);
+const outerCubeMat = new THREE.MeshStandardMaterial({
+  map: mfxCubeTex,
+  roughness: 0.28,
+  metalness: 0.5
+});
+const outerCubesMesh = new THREE.InstancedMesh(outerCubeGeo, outerCubeMat, OUTER_CUBE_COUNT);
+scene.add(outerCubesMesh);
+
+// Thick 3D Neon Wireframe Portals (built from solid 3D bars so they have 4x+ thickness on macOS WebGL!)
+const portalGroup = new THREE.Group();
+scene.add(portalGroup);
+const portals = [];
+const PORTAL_BAR_THICK = 0.28;
+const portalHBarGeo = new THREE.BoxGeometry(18.0 + PORTAL_BAR_THICK, PORTAL_BAR_THICK, 0.45);
+const portalVBarGeo = new THREE.BoxGeometry(PORTAL_BAR_THICK, 13.0 + PORTAL_BAR_THICK, 0.45);
+const portalBlueMat = new THREE.MeshBasicMaterial({
+  color: 0x396ba5,
+  transparent: true,
+  opacity: 0.92,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const portalRedMat = new THREE.MeshBasicMaterial({
+  color: 0xff1234,
+  transparent: true,
+  opacity: 0.92,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+for (let i = 0; i < 12; i++) {
+  const frame = new THREE.Group();
+  const pMat = i % 2 === 0 ? portalBlueMat : portalRedMat;
+  const topBar = new THREE.Mesh(portalHBarGeo, pMat);
+  topBar.position.set(0, 6.5, 0);
+  const botBar = new THREE.Mesh(portalHBarGeo, pMat);
+  botBar.position.set(0, -6.5, 0);
+  const leftBar = new THREE.Mesh(portalVBarGeo, pMat);
+  leftBar.position.set(-9.0, 0, 0);
+  const rightBar = new THREE.Mesh(portalVBarGeo, pMat);
+  rightBar.position.set(9.0, 0, 0);
+  frame.add(topBar, botBar, leftBar, rightBar);
+  frame.position.z = -i * 7.0;
+  portalGroup.add(frame);
+  portals.push(frame);
+}
+
+// Thick 3D Oscilloscope Waveform Ribbon Mesh (4x+ thicker than 1px WebGL LineLoop!)
+const RING_PTS = 128;
+const RING_RIBBON_HALF_W = 0.17;
+const ringPos = new Float32Array((RING_PTS + 1) * 2 * 3);
+const ringIndices = [];
+for (let i = 0; i < RING_PTS; i++) {
+  const a = i * 2;
+  const b = i * 2 + 1;
+  const c = (i + 1) * 2;
+  const d = (i + 1) * 2 + 1;
+  ringIndices.push(a, b, c, b, d, c);
+}
+const ringGeo = new THREE.BufferGeometry();
+ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+ringGeo.setIndex(ringIndices);
+const ringLine = new THREE.Mesh(
+  ringGeo,
+  new THREE.MeshBasicMaterial({
+    color: 0x00f0ff,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.92,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  })
+);
+ringLine.position.set(0, 0, 3.0);
+scene.add(ringLine);
+
+const dummy = new THREE.Object3D();
+
+// ============================================================================
+// 10B. INTEGRATED 3D INDUSTRIAL & DEMOSCENE STAGE ARCHITECTURES (NO BOUNCY BALLS!)
+// ============================================================================
+
+// EFFECT A: 3D Industrial Guillotine Light-Ribs & Pouët Cyber-Grid Horizon Tunnel (Parts IV, V, VII, IX, X)
+const copperBoingGroup = new THREE.Group();
+copperBoingGroup.visible = false;
+scene.add(copperBoingGroup);
+
+const COPPER_COUNT = 32;
+const copperBarGeo = new THREE.BoxGeometry(28.0, 0.55, 0.75);
+const copperBarMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.15,
+  metalness: 0.88,
+  emissive: 0xff0055,
+  emissiveIntensity: 0.65
+});
+const copperBarsInstanced = new THREE.InstancedMesh(copperBarGeo, copperBarMat, COPPER_COUNT);
+const copperCol = new THREE.Color();
+for (let i = 0; i < COPPER_COUNT; i++) {
+  const palette = [0xff1234, 0x00f0ff, 0xffdd00, 0x396ba5];
+  copperCol.setHex(palette[i % 4]);
+  copperBarsInstanced.setColorAt(i, copperCol);
+}
+copperBarsInstanced.instanceColor.needsUpdate = true;
+copperBoingGroup.add(copperBarsInstanced);
+
+// Procedural Pouët Cyber-Grid Texture (#14243b / #396ba5 / #ff0055) for Industrial Floor & Ceiling Vaults (Thickened 3x!)
+const checkerCanvas = document.createElement('canvas');
+checkerCanvas.width = 256;
+checkerCanvas.height = 256;
+const checkerCtx = checkerCanvas.getContext('2d');
+checkerCtx.fillStyle = '#070e1a';
+checkerCtx.fillRect(0, 0, 256, 256);
+checkerCtx.strokeStyle = '#396ba5';
+checkerCtx.lineWidth = 7;
+for (let k = 0; k <= 256; k += 32) {
+  checkerCtx.beginPath();
+  checkerCtx.moveTo(k, 0);
+  checkerCtx.lineTo(k, 256);
+  checkerCtx.stroke();
+  checkerCtx.beginPath();
+  checkerCtx.moveTo(0, k);
+  checkerCtx.lineTo(256, k);
+  checkerCtx.stroke();
+}
+checkerCtx.strokeStyle = '#ff0055';
+checkerCtx.lineWidth = 10;
+checkerCtx.strokeRect(5, 5, 246, 246);
+
+const checkerTex = new THREE.CanvasTexture(checkerCanvas);
+checkerTex.colorSpace = THREE.SRGBColorSpace;
+checkerTex.wrapS = THREE.RepeatWrapping;
+checkerTex.wrapT = THREE.RepeatWrapping;
+checkerTex.repeat.set(14, 14);
+
+const checkerMat = new THREE.MeshBasicMaterial({
+  map: checkerTex,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0.85
+});
+const checkerFloor = new THREE.Mesh(new THREE.PlaneGeometry(88, 96), checkerMat);
+checkerFloor.rotation.x = Math.PI * 0.5;
+checkerFloor.position.set(0, -7.2, -16);
+const checkerCeiling = new THREE.Mesh(new THREE.PlaneGeometry(88, 96), checkerMat);
+checkerCeiling.rotation.x = Math.PI * 0.5;
+checkerCeiling.position.set(0, 7.8, -16);
+copperBoingGroup.add(checkerFloor, checkerCeiling);
+
+// EFFECT B: 160 High-Velocity Octahedral Shards (Parts III, VI, VIII, X)
+const glenzMetaballGroup = new THREE.Group();
+glenzMetaballGroup.visible = false;
+scene.add(glenzMetaballGroup);
+
+const METABALL_COUNT = 160;
+const metaballGeo = new THREE.OctahedronGeometry(0.78, 0);
+const metaballMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  emissive: 0x0088cc,
+  emissiveIntensity: 0.65,
+  roughness: 0.1,
+  metalness: 0.92,
+  flatShading: true
+});
+const metaballInstanced = new THREE.InstancedMesh(metaballGeo, metaballMat, METABALL_COUNT);
+const shardCol = new THREE.Color();
+for (let i = 0; i < METABALL_COUNT; i++) {
+  shardCol.setHex(i % 3 === 0 ? 0xff0055 : (i % 2 === 0 ? 0x00f0ff : 0xffdd00));
+  metaballInstanced.setColorAt(i, shardCol);
+}
+metaballInstanced.instanceColor.needsUpdate = true;
+glenzMetaballGroup.add(metaballInstanced);
+
+// EFFECT C: Dual-Vault 3D Audio-FFT Displaced Trench + 16 Converging Stage Laser Beams (Parts V, VII, VIII, IX, X)
+const canyonGroup = new THREE.Group();
+canyonGroup.visible = false;
+scene.add(canyonGroup);
+
+const CANYON_W = 40;
+const CANYON_D = 32;
+const canyonGeo = new THREE.PlaneGeometry(74, 88, CANYON_W, CANYON_D);
+
+// Custom Screen-Space Thick Wireframe Shader (4px thick anti-aliased grid + diagonal wireframe edges!)
+const canyonWireMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uColor: { value: new THREE.Color(0x00f0ff) },
+    uOpacity: { value: 0.92 },
+    uGrid: { value: new THREE.Vector2(CANYON_W, CANYON_D) },
+    uThickness: { value: 3.8 }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 uColor;
+    uniform float uOpacity;
+    uniform vec2 uGrid;
+    uniform float uThickness;
+    varying vec2 vUv;
+    void main() {
+      vec2 coord = vUv * uGrid;
+      vec2 grid = abs(fract(coord - 0.5) - 0.5) / (fwidth(coord) * uThickness);
+      float diagCoord = coord.x + coord.y;
+      float diag = abs(fract(diagCoord - 0.5) - 0.5) / (fwidth(diagCoord) * (uThickness * 0.85));
+      float line = min(min(grid.x, grid.y), diag);
+      float alpha = 1.0 - min(line, 1.0);
+      if (alpha < 0.04) discard;
+      gl_FragColor = vec4(uColor * (1.0 + alpha * 0.35), alpha * uOpacity);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+  blending: THREE.AdditiveBlending
+});
+canyonWireMat.color = canyonWireMat.uniforms.uColor.value;
+
+const canyonMesh = new THREE.Mesh(canyonGeo, canyonWireMat);
+canyonMesh.rotation.x = -Math.PI * 0.5;
+canyonMesh.position.set(0, -6.6, -16.0);
+const canyonCeilingMesh = new THREE.Mesh(canyonGeo, canyonWireMat);
+canyonCeilingMesh.rotation.x = Math.PI * 0.5;
+canyonCeilingMesh.position.set(0, 7.2, -16.0);
+canyonGroup.add(canyonMesh, canyonCeilingMesh);
+
+// Thick 3D Stage Laser Beams (solid 3D box beams instead of 1px WebGL gl.LINES!)
+const laserLines = [];
+const laserGeo = new THREE.BoxGeometry(0.22, 0.22, 82.0);
+laserGeo.translate(0, 0, -27.0); // Spans z = +14 to z = -68
+for (let i = 0; i < 16; i++) {
+  const l = new THREE.Mesh(
+    laserGeo,
+    new THREE.MeshBasicMaterial({
+      color: i % 3 === 0 ? 0x00f0ff : (i % 2 === 0 ? 0xff0055 : 0xffdd00),
+      transparent: true,
+      opacity: 0.88,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+  );
+  canyonGroup.add(l);
+  laserLines.push(l);
+}
+
+// EFFECT D: 140 Swirling 3D Vortex Cubes + 80 Extruded 3D Neon Hearts in the Part X Kisses Finale
+const TORNADO_COUNT = 140;
+const tornadoGeo = new THREE.BoxGeometry(1.1, 1.1, 1.1);
+const tornadoMat = new THREE.MeshStandardMaterial({
+  map: mfxCubeTex,
+  roughness: 0.2,
+  metalness: 0.4,
+  emissive: 0x440018,
+  emissiveIntensity: 0.35
+});
+const tornadoInstanced = new THREE.InstancedMesh(tornadoGeo, tornadoMat, TORNADO_COUNT);
+tornadoInstanced.visible = false;
+scene.add(tornadoInstanced);
+
+// 80 Smooth 3D Extruded Hearts for Part X ("SENDING KISSES TO THE MAIN HATERS")
+const HEART_COUNT = 80;
+const heartShape = new THREE.Shape();
+heartShape.moveTo(0, 0.28);
+heartShape.bezierCurveTo(0, 0.35, -0.12, 0.58, -0.38, 0.58);
+heartShape.bezierCurveTo(-0.78, 0.58, -0.78, 0.08, -0.78, 0.08);
+heartShape.bezierCurveTo(-0.78, -0.25, -0.45, -0.55, 0, -0.88);
+heartShape.bezierCurveTo(0.45, -0.55, 0.78, -0.25, 0.78, 0.08);
+heartShape.bezierCurveTo(0.78, 0.08, 0.78, 0.58, 0.38, 0.58);
+heartShape.bezierCurveTo(0.12, 0.58, 0, 0.35, 0, 0.28);
+
+const heartGeo = new THREE.ExtrudeGeometry(heartShape, {
+  depth: 0.28,
+  bevelEnabled: true,
+  bevelSegments: 4,
+  steps: 1,
+  bevelSize: 0.07,
+  bevelThickness: 0.07
+});
+heartGeo.center();
+
+const heartMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  emissive: 0xaa0044,
+  emissiveIntensity: 0.65,
+  roughness: 0.15,
+  metalness: 0.45
+});
+const heartInstanced = new THREE.InstancedMesh(heartGeo, heartMat, HEART_COUNT);
+const heartCol = new THREE.Color();
+for (let i = 0; i < HEART_COUNT; i++) {
+  heartCol.setHex(i % 3 === 0 ? 0xffdd00 : (i % 2 === 0 ? 0xff0066 : 0xff44aa));
+  heartInstanced.setColorAt(i, heartCol);
+}
+heartInstanced.instanceColor.needsUpdate = true;
+heartInstanced.visible = false;
+scene.add(heartInstanced);
+
+// ============================================================================
+// 11. CHOREOGRAPHY TRIGGERS: 4-BOM HITS, ODD-BAR ANSWERS, SNARES, HATS
+// ============================================================================
+function updateIntroCubeFormation(barNum, hitIdx) {
+  if (barNum < 8) {
+    // Part I (0:00 - 0:13.15, including Bar 0 right at 0:00.06s!):
+    // Every single one of the 4 BOM! BOM! BOM! BOM! hits snaps the mfx.gif cubes into a distinct 3D formation!
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      const cheb = Math.max(Math.abs(m.gx), Math.abs(m.gy), Math.abs(m.gz));
+      const manhattan = Math.abs(m.gx) + Math.abs(m.gy) + Math.abs(m.gz);
+
+      if (barNum === 0) {
+        // BAR 0 (0:00.06s, 0:00.37s, 0:00.68s, 0:00.98s): Progressive 4-hit subdivision from the very first beat!
+        if (hitIdx === 0) {
+          // BOM 1 (0.06s): 27-cube (3x3x3) core bursts out of the monolith!
+          if (cheb <= 1) {
+            m.targetPos.set(m.gx * 2.1, m.gy * 2.1, m.gz * 2.1);
+            m.targetScale = 1.15;
+          } else {
+            m.targetPos.set(0, 0, 0);
+            m.targetScale = 0.001;
+          }
+        } else if (hitIdx === 1) {
+          // BOM 2 (0.37s): 3D Starburst / Octahedron expansion!
+          if (manhattan <= 3) {
+            m.targetPos.set(m.gx * 2.35, m.gy * 2.35, m.gz * 2.35);
+            m.targetScale = 1.05;
+          } else {
+            m.targetPos.set(0, 0, 0);
+            m.targetScale = 0.001;
+          }
+        } else if (hitIdx === 2) {
+          // BOM 3 (0.68s): Outer 5x5x5 Hypercube Cage snaps out!
+          if (cheb === 2 || i === 62) {
+            m.targetPos.set(m.gx * 2.15, m.gy * 2.15, m.gz * 2.15);
+            m.targetScale = i === 62 ? 2.2 : 0.95;
+          } else {
+            m.targetPos.set(0, 0, 0);
+            m.targetScale = 0.001;
+          }
+        } else {
+          // BOM 4 (0.98s): All 125 mfx.gif cubes slam into full 5x5x5 formation!
+          m.targetPos.set(m.gx * 2.45, m.gy * 2.45, m.gz * 2.45);
+          m.targetScale = 0.96;
+        }
+      } else {
+        // Bars 2, 4, 6: Full 125-cube 4-hit geometric snaps on every BOM!
+        if (hitIdx === 0) {
+          m.targetPos.set(m.gx * 1.75, m.gy * 1.75, m.gz * 1.75);
+          m.targetScale = 1.02;
+        } else if (hitIdx === 1) {
+          // 3D Diagonal X-Star
+          const stretch = 1.9 + (cheb * 0.45);
+          m.targetPos.set(m.gx * stretch, m.gy * stretch, m.gz * 1.5);
+          m.targetScale = 0.94;
+        } else if (hitIdx === 2) {
+          // 3 Orthogonal Atomic Rings
+          const a = (i / HERO_CUBE_COUNT) * Math.PI * 6;
+          const r = 4.2 + (i % 3) * 1.4;
+          if (i % 3 === 0) m.targetPos.set(Math.cos(a) * r, Math.sin(a) * r, 0);
+          else if (i % 3 === 1) m.targetPos.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+          else m.targetPos.set(0, Math.cos(a) * r, Math.sin(a) * r);
+          m.targetScale = 0.92;
+        } else {
+          // Expanded 5x5x5 Cube Lattice
+          m.targetPos.set(m.gx * 2.55, m.gy * 2.55, m.gz * 2.55);
+          m.targetScale = 0.96;
+        }
+      }
+    }
+  } else if (barNum < 16) {
+    // Part II (0:13.15 - 0:26.30): Reactor corridor geometric morphs on every BOM!
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      m.targetScale = 0.95;
+      if (hitIdx === 0) {
+        const arm = (i % 5) - 2;
+        const step = Math.floor(i / 5) - 12;
+        m.targetPos.set(arm * 2.5, Math.sin(step * 0.5 + barNum) * 4.5, step * 0.7);
+      } else if (hitIdx === 1) {
+        const ring = Math.floor(i / 25);
+        const slot = i % 25;
+        const a = (slot / 25) * Math.PI * 2 + ring * 0.4;
+        const r = 2.6 + ring * 1.65;
+        m.targetPos.set(Math.cos(a) * r, Math.sin(a) * r, (ring - 2) * 2.2);
+      } else if (hitIdx === 2) {
+        const strand = i % 2 === 0 ? 1 : -1;
+        const k = Math.floor(i / 2) - 31;
+        const a = k * 0.28;
+        m.targetPos.set(Math.cos(a) * 4.4 * strand, Math.sin(a) * 4.4 * strand, k * 0.45);
+      } else {
+        m.targetPos.set(m.gx * 2.7, m.gy * 2.7, m.gz * 2.7);
+      }
+    }
+  } else if (barNum < 32) {
+    // Part III (0:26.30 - 0:39.45): Pulsing Fibonacci Sphere
+    const r = 4.8 + hitIdx * 1.1;
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      m.targetScale = 0.88;
+      m.targetPos.set(
+        Math.sin(m.phi) * Math.cos(m.theta) * r,
+        Math.sin(m.phi) * Math.sin(m.theta) * r,
+        Math.cos(m.phi) * r
+      );
+    }
+  } else if (barNum >= 144) {
+    // Part X (3:56.71+): Giant 3D Parametric Heart Sculpture of 125 Hater-Avatar Cubes framing the Valentine Shrine!
+    const pulse = 0.56 + hitIdx * 0.05;
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      const u = (i / HERO_CUBE_COUNT) * Math.PI * 2;
+      const hx = 16.0 * Math.pow(Math.sin(u), 3);
+      const hy = 13.0 * Math.cos(u) - 5.0 * Math.cos(2 * u) - 2.0 * Math.cos(3 * u) - Math.cos(4 * u);
+      const layerZ = -2.2 + ((i % 5) - 2) * 0.9;
+      m.targetPos.set(hx * pulse, (hy + 1.5) * pulse, layerZ);
+      m.targetScale = 0.85;
+    }
+  } else {
+    // Parts V - IX (0:52.60 - 3:56.7): Dynamic 4-Hit Stage Architectures snapping around the Monument & 3D Text!
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      const u = i / HERO_CUBE_COUNT;
+      const a = u * Math.PI * 2;
+      if (hitIdx === 0) {
+        // Hit 0: Twin Brutalist Guillotine Towers flanking the Monument
+        const side = i % 2 === 0 ? -1 : 1;
+        const row = Math.floor(i / 2);
+        const y = ((row % 21) - 10) * 0.72;
+        const col = Math.floor(row / 21);
+        m.targetPos.set(side * (9.2 + col * 1.8), y, -1.2 + (col - 1) * 1.4);
+        m.targetScale = 0.82;
+      } else if (hitIdx === 1) {
+        // Hit 1: Diagonal X-Blade Crosshair behind the 3D Text
+        const diag = i % 2 === 0 ? 1 : -1;
+        const dist = ((i / HERO_CUBE_COUNT) - 0.5) * 24.0;
+        m.targetPos.set(dist, dist * 0.62 * diag, -2.0 + (i % 3 - 1) * 1.2);
+        m.targetScale = 0.80;
+      } else if (hitIdx === 2) {
+        // Hit 2: Interlocking Gyroscopic Double Halo
+        const ring = i % 2;
+        const rad = ring === 0 ? 10.2 : 12.8;
+        m.targetPos.set(
+          Math.cos(a * 2) * rad,
+          Math.sin(a * 2) * rad * (ring === 0 ? 0.75 : 0.45),
+          -2.0 + Math.sin(a * 4) * 2.2
+        );
+        m.targetScale = 0.82;
+      } else {
+        // Hit 3: Explosive Rectangular Portal Frame locking onto the Monument
+        const edge = i % 4;
+        const tEdge = (Math.floor(i / 4) / 31) * 2 - 1; // -1..1
+        const rx = edge < 2 ? tEdge * 11.0 : (edge === 2 ? -11.0 : 11.0);
+        const ry = edge >= 2 ? tEdge * 7.2 : (edge === 0 ? 7.2 : -7.2);
+        m.targetPos.set(rx, ry, -1.0 + (i % 3 - 1) * 0.8);
+        m.targetScale = 0.88;
+      }
+    }
+  }
+}
+
+function triggerBomHit(bomEv) {
+  const hitIdx = bomEv.hitIdx; // 0 = 1st word, 1 = 2nd word, 2 = 3rd word, 3 = 4th word
+  const chaos = getChaosLevel(bomEv.t);
+  state.activeHitIdx = hitIdx;
+  state.kickEnv = 1.35 + chaos * 0.35;
+
+  updateIntroCubeFormation(bomEv.bar, hitIdx);
+
+  // INTRO (0:00 - 0:52.60): Cubes-only choreography, NO 3D words or Prod Monument yet!
+  if (bomEv.isIntro) {
+    word3DMesh.visible = false;
+    heroMonument.visible = false;
+    arenaGroup.visible = false;
+
+    const introCuts = [
+      { pos: [0, 0, 13.0], look: [0, 0, 0], roll: 0 },
+      { pos: [-7.5, 4.0, 11.5], look: [0, 0, 0], roll: -0.18 },
+      { pos: [7.5, -4.0, 11.5], look: [0, 0, 0], roll: 0.18 },
+      { pos: [0, 6.5, 10.0], look: [0, 0, 0], roll: 0.30 }
+    ];
+    const cut = introCuts[(bomEv.bar + hitIdx) % 4];
+    state.camTargetPos.set(cut.pos[0], cut.pos[1], cut.pos[2]);
+    state.camTargetLook.set(cut.look[0], cut.look[1], cut.look[2]);
+    state.camTargetRoll = cut.roll;
+    return;
+  }
+
+  // Any 2D AI Text Segment (Intro, Musical Breaks, or Part VIII Chill Intermission):
+  // No screenshot monument box, no giant 3D words — pure 3D scene + 2D centered white typewriter text!
+  const active2DSeg = getActive2DTextSegment(bomEv.bar);
+  if (active2DSeg) {
+    word3DMesh.visible = false;
+    heroMonument.visible = false;
+    arenaGroup.visible = false;
+    state.kickEnv = 0.45;
+    state.glitchTear = 0;
+    state.invertEnv = 0;
+    if (hitIdx === 0 && active2DSeg.avatarPath) {
+      const chillTex = getAvatarCubeTex(active2DSeg.avatarPath);
+      heroCubeMat.map = chillTex;
+      heroCubeMat.needsUpdate = true;
+    }
+    return;
+  }
+
+  // POST-0:52.60: TRUE 3D EXTRUDED WORDS + PROMINENT 3D POUËT PROD & BBS TOPIC MONUMENTS!
+  const isKissesPart = bomEv.bar >= 144;
+  heroMonument.visible = true;
+  arenaGroup.visible = !isKissesPart;
+
+  // On Hit 0, advance to the next item:
+  // - In Parts V..IX (Bars 32..143): cycle PROD_QUOTES (Parts V-VII) & FORUM_QUOTES (Part IX)
+  // - In Part X (Bars 144..158, 3:56.71+): SENDING KISSES TO THE MAIN HATERS — one main hater per 4-hit pattern!
+  if (hitIdx === 0) {
+    if (isKissesPart) {
+      const patternOrder = Math.max(0, KISS_BOM_BARS.indexOf(bomEv.bar));
+      const baseHater = HATER_KISSES[patternOrder % HATER_KISSES.length];
+      const round2Idx = patternOrder - HATER_KISSES.length;
+      const kissTokens = (round2Idx >= 0 && round2Idx < HATER_KISSES_ROUND2_TOKENS.length)
+        ? HATER_KISSES_ROUND2_TOKENS[round2Idx]
+        : baseHater.beatTokens;
+
+      const kissItem = {
+        ...baseHater,
+        beatTokens: kissTokens
+      };
+      state.activeBeatTokens = kissTokens;
+      updateHeroProdMonument(kissItem);
+
+      // Dress all 125 orbiting 3D cubes & vortex cubes in the current hater's Pouët avatar for their pattern!
+      const haterCubeTex = getAvatarCubeTex(kissItem.avatarPath);
+      heroCubeMat.map = haterCubeTex;
+      heroCubeMat.needsUpdate = true;
+      outerCubeMat.map = haterCubeTex;
+      outerCubeMat.needsUpdate = true;
+      tornadoMat.map = haterCubeTex;
+      tornadoMat.needsUpdate = true;
+
+      // Update Arena Monuments to celebrate this hater's quotes too!
+      const arenaSlot = arenaMonuments[patternOrder % ARENA_COUNT];
+      if (arenaSlot) {
+        drawProdCommentCanvas(arenaSlot.userData.lc, arenaSlot.userData.lctx, kissItem);
+        arenaSlot.userData.ltex.needsUpdate = true;
+      }
+    } else {
+      const isForumPart = (bomEv.bar >= 96 && bomEv.bar < 144);
+      const isOpeningAnthemDrop = (bomEv.bar === 32);
+
+      let item;
+      if (isForumPart) {
+        const fc = state.forumCursor || 0;
+        item = FORUM_QUOTES[fc % FORUM_QUOTES.length];
+        state.forumCursor = fc + 1;
+      } else {
+        const pc = state.prodCursor || 0;
+        item = PROD_QUOTES[pc % PROD_QUOTES.length];
+        state.prodCursor = pc + 1;
+      }
+      state.commentCursor++;
+
+      if (isOpeningAnthemDrop) {
+        // Show the 4-word title phrase on the first 3D drop (Bar 32)
+        state.activeBeatTokens = BEAT_TOKENS;
+        item = {
+          ...item,
+          beatTokens: BEAT_TOKENS
+        };
+      } else if (CRIME_3D_BOM_BAR_SET.has(bomEv.bar)) {
+        state.activeBeatTokens = ['VIBECODING', 'IS', 'NOT', 'A CRIME!'];
+        item = {
+          ...item,
+          beatTokens: ['VIBECODING', 'IS', 'NOT', 'A CRIME!']
+        };
+      } else {
+        state.activeBeatTokens = (item.beatTokens && item.beatTokens.length === 4)
+          ? item.beatTokens
+          : ['CERTIFIED', 'POUËT', 'THUMB', 'DOWN!'];
+      }
+      updateHeroProdMonument(item);
+      const activeAvTex = getAvatarCubeTex(item.avatarPath || 'assets/avatars/mfx.gif');
+      if (heroCubeMat.map !== activeAvTex) {
+        heroCubeMat.map = activeAvTex;
+        heroCubeMat.needsUpdate = true;
+        outerCubeMat.map = activeAvTex;
+        outerCubeMat.needsUpdate = true;
+      }
+
+      // Refresh one of the 16 surrounding Arena Monuments so the 3D arena never stays static
+      const arenaSlot = arenaMonuments[state.commentCursor % ARENA_COUNT];
+      const pool = isForumPart ? FORUM_QUOTES : PROD_QUOTES;
+      const nextArenaItem = pool[(state.commentCursor + 7) % pool.length];
+      if (arenaSlot && nextArenaItem) {
+        drawProdCommentCanvas(arenaSlot.userData.lc, arenaSlot.userData.lctx, nextArenaItem);
+        arenaSlot.userData.ltex.needsUpdate = true;
+        if (nextArenaItem.screenshot) {
+          const st = loadTex(nextArenaItem.screenshot);
+          if (st && arenaSlot.userData.screenMesh.material[4]) {
+            arenaSlot.userData.screenMesh.material[4].map = st;
+            arenaSlot.userData.screenMesh.material[4].needsUpdate = true;
+          }
+        }
+      }
+    }
+  }
+
+  const activeTokens = state.activeBeatTokens || BEAT_TOKENS;
+  const isCrimeBomBar = CRIME_3D_BOM_BAR_SET.has(bomEv.bar);
+  const wordToken = (isCrimeBomBar && hitIdx === 3)
+    ? 'VIBECODING\nIS NOT\nA CRIME!'
+    : (activeTokens[hitIdx] || BEAT_TOKENS[hitIdx]);
+
+  // Build & slam the Smooth 3D Extruded Impact Word right up close in front of the camera!
+  build3DWordVoxels(wordToken, hitIdx, isCrimeBomBar);
+  const hitStyle = WORD_HIT_STYLES[hitIdx % 4];
+  word3DMesh.position.set(0, 0.35, state.activeWordTemplate?.isMultiLine ? 4.4 : 5.2);
+  word3DMesh.rotation.set(
+    -0.05 + (Math.random() - 0.5) * 0.08 * chaos,
+    (hitIdx - 1.5) * -0.07,
+    hitStyle.tiltZ + (Math.random() - 0.5) * 0.05 * chaos
+  );
+  state.word3DExplodeAt = bomEv.explodeAt;
+
+  const isOverdrivePart = (bomEv.bar >= 96 && bomEv.bar < 144);
+
+  if (isOverdrivePart) {
+    // PART IX (2:38 - 3:57): TOTAL OVERDRIVE — Invert strobe, stamp slam & avatar swap on EVERY BOM hit!
+    repositionStampHammer();
+    state.stampHammerEnv = 1.45;
+    state.invertEnv = (hitIdx === 1 || hitIdx === 3) ? 1.28 : 0.92;
+    state.glitchTear = 0.95 + (hitIdx === 3 ? 0.45 : 0.25);
+
+    const rapidHater = HATER_KISSES[(bomEv.bar * 4 + hitIdx) % HATER_KISSES.length];
+    const rapidTex = getAvatarCubeTex(rapidHater.avatarPath);
+    heroCubeMat.map = rapidTex;
+    heroCubeMat.needsUpdate = true;
+    outerCubeMat.map = rapidTex;
+    outerCubeMat.needsUpdate = true;
+    tornadoMat.map = rapidTex;
+    tornadoMat.needsUpdate = true;
+  } else if (hitIdx === 3) {
+    // 4th BOM Hit: Slam the 3D Stamp Hammer onto a new position on the Hero Prod Monument!
+    repositionStampHammer();
+    state.stampHammerEnv = 1.4;
+    state.invertEnv = 0.55 + chaos * 0.45;
+    state.glitchTear = 0.55 + chaos * 0.45;
+  } else {
+    state.glitchTear = (hitIdx === 1 ? 0.5 : 0.25) * (0.4 + chaos * 0.8);
+  }
+
+  // Closer, punchier camera framing (z = 11.8..12.5) with calm, steady framing in Part IX Overdrive!
+  const camAngles = isOverdrivePart
+    ? [
+        { pos: [-0.45, 0.25, 11.9], look: [0, 0.25, 2.5], roll: -0.015 },
+        { pos: [0.45, 0.25, 11.9], look: [0, 0.25, 2.5], roll: 0.015 },
+        { pos: [-0.35, 0.15, 11.8], look: [0, 0.25, 2.5], roll: -0.012 },
+        { pos: [0, 0.25, 11.7], look: [0, 0.22, 2.4], roll: 0.0 }
+      ]
+    : [
+        { pos: [-1.35, 0.65, 12.5], look: [0, 0.28, 2.5], roll: -0.06 },
+        { pos: [1.35, 0.75, 12.3], look: [0, 0.28, 2.5], roll: 0.07 },
+        { pos: [-1.15, -0.75, 12.1], look: [0, 0.28, 2.5], roll: -0.07 },
+        { pos: [0, 0.25, 11.8], look: [0, 0.20, 2.2], roll: 0.04 }
+      ];
+  const c = camAngles[hitIdx];
+  const camJitter = isOverdrivePart ? 0.0 : chaos;
+  state.camTargetPos.set(
+    c.pos[0] + (Math.random() - 0.5) * 0.9 * camJitter,
+    c.pos[1] + (Math.random() - 0.5) * 0.75 * camJitter,
+    c.pos[2]
+  );
+  state.camTargetLook.set(c.look[0], c.look[1], c.look[2]);
+  state.camTargetRoll = c.roll * (isOverdrivePart ? 1.0 : (1 + chaos * 0.7));
+}
+
+// Sync every 16th-note musical element in non-BOM bars (Odd-bar 3-hit answer bass, snares, hats, stops)
+function onStep16Change(globalStep16, t) {
+  const barNum = Math.floor(globalStep16 / 16);
+  const stepInBar = globalStep16 % 16;
+  const chaos = getChaosLevel(t);
+
+  // 1) Odd-bar Rubik twist in Intro Part I (Bars 1, 3, 5, 7)
+  if (barNum < 8 && barNum % 2 === 1 && (stepInBar === 0 || stepInBar === 6 || stepInBar === 12)) {
+    for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+      const m = heroCubeMeta[i];
+      if (stepInBar === 0 && m.gy > 0) {
+        const tx = m.gx;
+        m.gx = -m.gz;
+        m.gz = tx;
+      } else if (stepInBar === 6 && m.gx < 0) {
+        const ty = m.gy;
+        m.gy = -m.gz;
+        m.gz = ty;
+      }
+      m.targetPos.set(m.gx * 1.9, m.gy * 1.9, m.gz * 1.9);
+    }
+  }
+
+  // 2) Odd-bar 3-Hit Answer Bass Slam (steps 1, 7, 13 in Bars 41,43,45, 49,51.., 113,115..):
+  if (ANSWER_BASS_BAR_SET.has(barNum) && (stepInBar === 1 || stepInBar === 7 || stepInBar === 13)) {
+    // On step 1 of selected odd bars in Parts VI-VII (49, 53, 65, 69), advance to the next unique prod so all 29 prods are shown across Parts V-VII!
+    if (stepInBar === 1 && (barNum === 49 || barNum === 53 || barNum === 65 || barNum === 69)) {
+      const pc = state.prodCursor || 0;
+      const item = PROD_QUOTES[pc % PROD_QUOTES.length];
+      state.prodCursor = pc + 1;
+      state.commentCursor++;
+      updateHeroProdMonument(item);
+    } else {
+      repositionStampHammer();
+    }
+    state.answerSlamEnv = 1.1;
+    state.kickEnv = Math.max(state.kickEnv, 1.0);
+    state.stampHammerEnv = 1.1;
+    const isPart9Odd = (barNum >= 96 && barNum < 144);
+    if (isPart9Odd) {
+      state.invertEnv = 1.15;
+      state.glitchTear = 0.95;
+    }
+
+    const xSwing = isPart9Odd ? 0.45 : 1.5;
+    const rSwing = isPart9Odd ? 0.015 : (0.06 * (1 + chaos * 0.6));
+    if (stepInBar === 1) {
+      state.camTargetPos.set(-xSwing, 0.35, 12.2);
+      state.camTargetLook.set(0, 0.25, -0.5);
+      state.camTargetRoll = -rSwing;
+    } else if (stepInBar === 7) {
+      state.camTargetPos.set(xSwing, 0.15, 12.2);
+      state.camTargetLook.set(0, 0.15, -0.5);
+      state.camTargetRoll = rSwing;
+    } else {
+      state.camTargetPos.set(0, 0.25, 12.2);
+      state.camTargetLook.set(0, 0.2, -0.5);
+      state.camTargetRoll = 0;
+    }
+  } else if (barNum >= 33 && barNum < 41 && barNum % 2 === 1 && stepInBar === 0) {
+    // In early odd bars (33, 35, 37, 39), advance the prod monument once on the downbeat so quotes stay readable!
+    const pc = state.prodCursor || 0;
+    const item = PROD_QUOTES[pc % PROD_QUOTES.length];
+    state.prodCursor = pc + 1;
+    state.commentCursor++;
+    updateHeroProdMonument(item);
+    state.stampHammerEnv = 0.95;
+  }
+
+  // 3) Snare / Clap Answer Stabs on steps 4, 10, 14 (skip during 0:26.30 - 0:52.60 and 2:11.51 - 2:37.81 chill sections)
+  const isChillBar = (barNum >= 16 && barNum < 32) || (barNum >= 80 && barNum < 96);
+  if (!isChillBar && (stepInBar === 4 || stepInBar === 10 || stepInBar === 14)) {
+    state.snareEnv = Math.max(state.snareEnv, 0.75);
+    if (barNum >= 96 && barNum < 144) {
+      state.invertEnv = Math.max(state.invertEnv, 0.72);
+      state.glitchTear = Math.max(state.glitchTear, 0.65);
+    }
+  }
+
+  // 4) 2D Live Typewriter AI Stream (Intro, Musical Breaks, & Chill Part VIII)
+  const activeSeg = getActive2DTextSegment(barNum);
+  if (activeSeg && stepInBar === 0) {
+    heroMonument.visible = false;
+    arenaGroup.visible = false;
+    word3DMesh.visible = false;
+  }
+
+  // 4B) 3D "VIBECODING IS NOT A CRIME!" Crazy Blinking Sculpture on Overdrive Stop/Breakdown Bars (103, 110..111)
+  if (CRIME_3D_HOLD_BAR_SET.has(barNum)) {
+    heroMonument.visible = false;
+    arenaGroup.visible = true;
+    if (stepInBar === 0 && (barNum === 103 || barNum === 110)) {
+      build3DWordVoxels('VIBECODING\nIS NOT\nA CRIME!', 1, true);
+      word3DMesh.position.set(0, 0.25, 4.4);
+      word3DMesh.rotation.set(0, 0, 0);
+      state.word3DExplodeAt = (barNum === 103 ? 104 : 112) * BAR_SEC - 0.24;
+      state.kickEnv = 1.45;
+      state.invertEnv = 1.15;
+      state.glitchTear = 1.05;
+      state.camTargetPos.set(0, 0.22, 11.5);
+      state.camTargetLook.set(0, 0.22, 2.5);
+      state.camTargetRoll = 0.0;
+    } else if (barNum === 111 && (stepInBar === 0 || stepInBar === 8)) {
+      state.kickEnv = 1.35;
+      state.invertEnv = 1.1;
+      state.glitchTear = 0.95;
+      state.camTargetPos.set(0, 0.22, 11.5);
+      state.camTargetLook.set(0, 0.22, 2.5);
+      state.camTargetRoll = 0.0;
+    }
+  }
+
+  // 5) Stop Bars (62, 78, 103, 126): Pickup slam on step 15!
+  if (STOP_BAR_SET.has(barNum) && stepInBar === 15) {
+    state.kickEnv = 1.4;
+    state.invertEnv = 0.85;
+    state.glitchTear = 0.95;
+  }
+}
+
+const CRIME_3D_STROBE_PALETTES = [
+  { face: 0xffffff, side: 0xff0055, emissive: 0xff0055, stroke: 0x05070c },
+  { face: 0xff0055, side: 0x00f0ff, emissive: 0x00f0ff, stroke: 0xffffff },
+  { face: 0xffe600, side: 0xff0055, emissive: 0xcc0044, stroke: 0x05070c },
+  { face: 0x05070c, side: 0xffffff, emissive: 0x00f0ff, stroke: 0x00f0ff },
+  { face: 0x00f0ff, side: 0xffe600, emissive: 0xffaa00, stroke: 0xff0055 }
+];
+
+function onTransient(ev) {
+  // During 0:26.30 - 0:52.60 (Bars 16..31) & 2:11.51 - 2:37.81 (Part VIII Chill), keep transients soft & atmospheric
+  if ((state.currentTime >= 26.30 && state.currentTime < 52.55) || (state.currentTime >= 131.51 && state.currentTime < 157.81)) {
+    if (ev.type === 'kick') state.kickEnv = Math.max(state.kickEnv, 0.22 * ev.low);
+    else if (ev.type === 'snare') state.snareEnv = Math.max(state.snareEnv, 0.25 * ev.mid);
+    else if (ev.type === 'hat') state.hatEnv = Math.max(state.hatEnv, 0.30 * ev.high);
+    return;
+  }
+  if (ev.type === 'kick') {
+    state.kickEnv = Math.max(state.kickEnv, 0.65 + ev.low * 0.55);
+  } else if (ev.type === 'snare') {
+    state.snareEnv = Math.max(state.snareEnv, 0.7 + ev.mid * 0.5);
+  } else if (ev.type === 'hat') {
+    state.hatEnv = Math.max(state.hatEnv, 0.65 + ev.high * 0.5);
+  }
+}
+
+// ============================================================================
+// 12. MAIN ANIMATION & 10-PART SCENE RENDER LOOP
+// ============================================================================
+let lastMs = performance.now();
+
+function animate(nowMs) {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (nowMs - lastMs) / 1000);
+  lastMs = nowMs;
+
+  if (state.isPlaying && state.hasStarted) {
+    state.currentTime = audioEl.currentTime;
+  } else if (!state.hasStarted) {
+    state.currentTime = (nowMs * 0.001) % 26.0;
+  }
+
+  const t = state.currentTime;
+  const currentBar = Math.floor(t / BAR_SEC);
+  const currentStep16Global = Math.floor(t / STEP16_SEC);
+  const part = getPartForBar(currentBar);
+  state.activePartId = part.id;
+  const chaos = getChaosLevel(t);
+
+  dom.edgeProgress.style.width = `${((t / BEATMAP.duration) * 100).toFixed(2)}%`;
+
+  // In the Intro (Bars 0-31, 0:00 - 0:52.60) or any 2D AI text break/intermission, hide the 3D monument & arena!
+  const active2DSegNow = getActive2DTextSegment(currentBar);
+  const isCrimeHoldBar = CRIME_3D_HOLD_BAR_SET.has(currentBar);
+  if (currentBar < 32) {
+    const introPair = Math.floor(currentBar / 2);
+    const introHater = HATER_KISSES[introPair % HATER_KISSES.length];
+    const introTex = introPair === 0 ? mfxCubeTex : getAvatarCubeTex(introHater.avatarPath);
+    if (heroCubeMat.map !== introTex) {
+      heroCubeMat.map = introTex;
+      heroCubeMat.needsUpdate = true;
+      outerCubeMat.map = introTex;
+      outerCubeMat.needsUpdate = true;
+    }
+    heroMonument.visible = false;
+    arenaGroup.visible = false;
+  } else if (active2DSegNow) {
+    heroMonument.visible = false;
+    arenaGroup.visible = false;
+  } else if (isCrimeHoldBar) {
+    heroMonument.visible = false;
+    arenaGroup.visible = true;
+    // Ensure 3D "VIBECODING IS NOT A CRIME!" is built even if the user scrubs directly into Bar 103 or 110..111
+    if (!word3DMesh.visible || !state.activeWordTemplate?.isMultiLine) {
+      build3DWordVoxels('VIBECODING\nIS NOT\nA CRIME!', 1, true);
+      word3DMesh.position.set(0, 0.25, 4.4);
+      word3DMesh.rotation.set(0, 0, 0);
+      state.word3DExplodeAt = (currentBar === 103 ? 104 : 112) * BAR_SEC - 0.24;
+    }
+  }
+
+  // Update 2D Live Typewriter Overlay on top of the screen
+  update2DAiTypewriter(t, currentBar);
+
+  // 1) Fire 4-BOM Pattern Events
+  const bomIdx = findIndexBefore(BOM_EVENTS, t);
+  if (bomIdx > state.lastBomIdx && bomIdx >= 0) {
+    triggerBomHit(BOM_EVENTS[bomIdx]);
+    state.lastBomIdx = bomIdx;
+  }
+
+  // 2) Fire 16th-note step choreography (odd-bar answer slams, Rubik twists, stops)
+  if (currentStep16Global !== state.lastStep16Global && currentStep16Global >= 0) {
+    state.lastStep16Global = currentStep16Global;
+    onStep16Change(currentStep16Global, t);
+  }
+
+  // 3) Fire pre-analyzed audio transients (kicks, snares, hi-hats)
+  const trIdx = findIndexBefore(BEATMAP.events, t);
+  if (trIdx > state.lastTransientIdx && trIdx >= 0) {
+    onTransient(BEATMAP.events[trIdx]);
+    state.lastTransientIdx = trIdx;
+  }
+
+  // 4) Explode & clear 3D Extruded Word right after the 4th BOM hit so non-4-BOM bars (and 2D text breaks) NEVER show words!
+  if (t < 52.55 || active2DSegNow || (!WORD_BOM_BAR_SET.has(currentBar) && !isCrimeHoldBar)) {
+    word3DMesh.visible = false;
+  } else if (state.word3DExplodeAt > 0 && t >= state.word3DExplodeAt) {
+    state.word3DExploding = true;
+  }
+
+  // Live Web Audio FFT
+  if (analyser && state.isPlaying) {
+    analyser.getByteFrequencyData(freqData);
+    analyser.getByteTimeDomainData(timeData);
+    let sL = 0;
+    let sM = 0;
+    let sH = 0;
+    for (let i = 0; i < 8; i++) sL += freqData[i];
+    for (let i = 8; i < 40; i++) sM += freqData[i];
+    for (let i = 40; i < 96; i++) sH += freqData[i];
+    state.subLevel = sL / (8 * 255);
+    state.midLevel = sM / (32 * 255);
+    state.highLevel = sH / (56 * 255);
+  } else {
+    state.subLevel = state.kickEnv * 0.65;
+    state.midLevel = 0.25;
+    state.highLevel = 0.15;
+    for (let i = 0; i < RING_PTS; i++) {
+      timeData[i] = 128 + Math.sin(i * 0.3 + t * 22) * 50 * (0.3 + state.subLevel);
+      freqData[i] = Math.floor((Math.sin(i * 0.25 + t * 10) * 0.5 + 0.5) * 180);
+    }
+  }
+
+  // Decay envelopes
+  state.kickEnv = Math.max(0, state.kickEnv - dt * 5.2);
+  state.snareEnv = Math.max(0, state.snareEnv - dt * 6.8);
+  state.hatEnv = Math.max(0, state.hatEnv - dt * 9.5);
+  state.answerSlamEnv = Math.max(0, state.answerSlamEnv - dt * 5.5);
+  state.stampHammerEnv = Math.max(0, state.stampHammerEnv - dt * 4.5);
+  state.glitchTear = Math.max(0, state.glitchTear - dt * 5.8);
+  state.invertEnv = Math.max(0, state.invertEnv - dt * 6.5);
+
+  // --------------------------------------------------------------------------
+  // TOGGLE DEEPLY INTEGRATED 3D STAGE ARCHITECTURES PER PART (PARTS 1 - 10)
+  // --------------------------------------------------------------------------
+  outerCubesMesh.visible = (part.id === 2 || part.id === 5 || part.id === 6 || part.id === 9);
+  portalGroup.visible = (part.id === 1 || part.id === 2 || part.id === 5 || part.id === 7 || part.id === 9);
+  eqInstanced.visible = (part.id >= 2 && part.id !== 8);
+  ringLine.visible = (part.id >= 3);
+  copperBoingGroup.visible = (part.id === 4 || part.id === 5 || part.id === 7 || part.id === 9 || part.id === 10);
+  glenzMetaballGroup.visible = (part.id === 3 || part.id === 6 || part.id === 9 || part.id === 10);
+  canyonGroup.visible = (part.id === 5 || part.id === 7 || part.id === 9 || part.id === 10);
+  tornadoInstanced.visible = (part.id === 9 || part.id === 10);
+  heartInstanced.visible = (part.id === 10);
+
+  // --------------------------------------------------------------------------
+  // ANIMATE SMOOTH 3D EXTRUDED IMPACT TYPOGRAPHY (CLOSE & IMPACTFUL!)
+  // --------------------------------------------------------------------------
+  if (word3DMesh.visible && activeWordLetters.length > 0) {
+    const explodeElapsed = state.word3DExploding ? Math.max(0, t - state.word3DExplodeAt) : 0;
+    if (explodeElapsed > 0.34) {
+      word3DMesh.visible = false;
+    } else {
+      const isMulti = Boolean(state.activeWordTemplate?.isMultiLine);
+      const baseZ = isMulti ? 4.4 : 5.2;
+      const slamScale = 1.0 + state.kickEnv * 0.16;
+
+      if (state.word3DCrazyBlink) {
+        const strobeTick = Math.floor(t * 28.0);
+        const pal = CRIME_3D_STROBE_PALETTES[strobeTick % CRIME_3D_STROBE_PALETTES.length];
+        const tpl = state.activeWordTemplate;
+        if (tpl) {
+          tpl.faceMat.color.setHex(pal.face);
+          tpl.sideMat.color.setHex(pal.side);
+          tpl.sideMat.emissive.setHex(pal.emissive);
+          tpl.sideMat.emissiveIntensity = (strobeTick % 2 === 0) ? 1.35 : 0.45;
+          tpl.strokeMat.color.setHex(pal.stroke);
+        }
+        const blinkPulse = (strobeTick % 4 === 3) ? 0.84 : (1.0 + (strobeTick % 2) * 0.12);
+        word3DMesh.scale.setScalar(slamScale * blinkPulse);
+        word3DMesh.position.x = ((strobeTick * 17) % 9 - 4) * 0.08;
+        word3DMesh.position.y = 0.28 + ((strobeTick * 29) % 9 - 4) * 0.06;
+        word3DMesh.position.z = baseZ + state.kickEnv * 0.65 + (strobeTick % 2) * 0.32;
+        word3DMesh.rotation.z = Math.sin(t * 34.0) * 0.055;
+        word3DMesh.rotation.y = Math.cos(t * 18.0) * 0.08;
+        if (isCrimeHoldBar && strobeTick % 3 === 0) {
+          state.invertEnv = Math.max(state.invertEnv, 0.88);
+          state.glitchTear = Math.max(state.glitchTear, 0.78);
+        }
+      } else {
+        word3DMesh.scale.setScalar(slamScale);
+        word3DMesh.position.z = baseZ + state.kickEnv * 0.65;
+        if (state.activeHitIdx === 3 && explodeElapsed === 0) {
+          word3DMesh.position.x = (Math.random() - 0.5) * 0.32 * (0.5 + chaos);
+          word3DMesh.position.y = 0.35 + (Math.random() - 0.5) * 0.25 * (0.5 + chaos);
+        }
+      }
+
+      for (let i = 0; i < activeWordLetters.length; i++) {
+        const ltr = activeWordLetters[i];
+        const blinkWave = state.word3DCrazyBlink ? Math.sin(i * 1.3 + t * 42.0) * 0.24 : 0;
+        const waveZ = Math.sin(i * 0.9 + t * 20.0) * 0.16 * state.kickEnv + blinkWave;
+        ltr.holder.position.set(
+          ltr.bx + ltr.vx * explodeElapsed,
+          ltr.by + (state.word3DCrazyBlink ? Math.cos(i * 1.7 + t * 36.0) * 0.09 : 0) + ltr.vy * explodeElapsed,
+          ltr.bz + waveZ + ltr.vz * explodeElapsed
+        );
+        ltr.holder.rotation.set(
+          ltr.rx * explodeElapsed + (state.word3DCrazyBlink ? Math.sin(t * 28.0 + i) * 0.08 : 0),
+          Math.sin(t * 8.0 + i) * 0.07 * state.kickEnv + ltr.ry * explodeElapsed,
+          ltr.rz * explodeElapsed
+        );
+        const s = Math.max(0.001, 1.0 - explodeElapsed * 2.5);
+        ltr.holder.scale.setScalar(s);
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE GIANT CENTERPIECE 3D POUËT PROD MONUMENT & 3D STAMP HAMMER
+  // --------------------------------------------------------------------------
+  if (heroMonument.visible) {
+    // Keep scale grounded at z = -1.5 so the demo screenshot never lunges toward the camera
+    const monScale = 1.0 + state.kickEnv * 0.035;
+    heroMonument.scale.setScalar(monScale);
+    heroMonument.rotation.y = Math.sin(t * 1.4) * (0.06 + chaos * 0.08);
+    heroMonument.rotation.z = Math.sin(t * 2.5) * 0.02 * state.kickEnv;
+
+    leftPylon.rotation.set(t * 2.5, t * 3.2, state.kickEnv);
+    rightPylon.rotation.set(-t * 2.5, -t * 3.2, -state.kickEnv);
+
+    stamp3DHammer.position.z = 0.75 + state.stampHammerEnv * 2.2;
+    stamp3DHammer.scale.setScalar(1.0 + state.stampHammerEnv * 0.35);
+    stamp3DHammer.rotation.z = stampBaseRotZ + Math.sin(t * 20) * 0.08 * state.stampHammerEnv;
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE 16 GIANT ARENA PROD MONUMENTS PER DEMO PART (PARTS V - X)
+  // Kept strictly in stage backdrop galleries (z = -10..-30) so demo images NEVER fly into the camera!
+  // --------------------------------------------------------------------------
+  if (arenaGroup.visible) {
+    for (let i = 0; i < ARENA_COUNT; i++) {
+      const m = arenaMonuments[i];
+      const fft = (freqData[(i * 3) % 64] || 0) / 255;
+
+      if (part.id === 5) {
+        // PART V: Brutalist 2-Tier Curved Museum Gallery Wall behind the Hero Monument
+        const tier = i % 2;
+        const col = Math.floor(i / 2); // 0..7
+        const u = (col - 3.5) / 3.5; // -1..+1
+        const x = u * 26.0;
+        const y = (tier === 0 ? -4.8 : 5.2) + Math.sin(t * 2.2 + i) * 0.6;
+        const z = -14.0 - (1.0 - u * u) * 8.0;
+        m.position.set(x, y, z);
+        m.lookAt(0, y * 0.3, 10.0);
+      } else if (part.id === 6) {
+        // PART VI: Semicircular Colosseum Amphitheater Arc behind the stage
+        const u = (i / (ARENA_COUNT - 1)) - 0.5; // -0.5..+0.5
+        const a = u * Math.PI * 0.88 + Math.sin(t * 0.8) * 0.08;
+        const r = 28.0;
+        m.position.set(Math.sin(a) * r, Math.sin(t * 2.8 + i) * 2.2, -Math.cos(a) * 18.0 - 8.0);
+        m.lookAt(0, 0, 8.0);
+      } else if (part.id === 7) {
+        // PART VII: Industrial Guillotine Cathedral Arch behind the stage
+        const a = ((i / (ARENA_COUNT - 1)) - 0.5) * Math.PI * 0.92;
+        const r = 27.0;
+        m.position.set(Math.sin(a) * r, Math.cos(a) * 7.5 + Math.sin(t * 2.5 + i) * 1.2, -16.0 - Math.cos(a) * 8.0);
+        m.lookAt(0, 0, 8.0);
+      } else if (part.id === 8) {
+        // PART VIII: Floating 2-Row Panoramic Backdrop behind the Gyroscope Reactor
+        const row = i % 2;
+        const slot = Math.floor(i / 2);
+        const a = ((slot / 7) - 0.5) * Math.PI * 0.85 + Math.sin(t * 0.9 + row) * 0.1;
+        const r = 26.0;
+        m.position.set(Math.sin(a) * r, (row === 0 ? -4.6 : 5.4), -Math.cos(a) * 16.0 - 9.0);
+        m.lookAt(0, 0, 8.0);
+      } else if (part.id === 9) {
+        // PART IX: Towering Stadium Screens flanking the FFT Wireframe Canyon (stationary Z, zero flying into camera!)
+        const side = i % 2 === 0 ? -1 : 1;
+        const idxOnSide = Math.floor(i / 2); // 0..7
+        const col = idxOnSide % 2;
+        const tier = Math.floor(idxOnSide / 2); // 0..3
+        const x = side * (17.5 + col * 8.5);
+        const y = -4.5 + tier * 4.4 + Math.sin(t * 3.5 + i) * 0.7;
+        const z = -11.0 - col * 6.5 - tier * 2.0;
+        m.position.set(x, y, z);
+        m.lookAt(0, y * 0.4, 8.0);
+      } else {
+        // PART X: Valentine Kisses Shrine Amphitheater behind the Centerpiece Valentine Card
+        const tier = i % 2;
+        const slot = Math.floor(i / 2);
+        const a = ((slot / 7) - 0.5) * Math.PI * 0.90;
+        const r = 25.0 + tier * 4.0;
+        m.position.set(
+          Math.sin(a) * r,
+          (tier === 0 ? -4.8 : 5.6) + Math.sin(t * 3.2 + i) * 1.1,
+          -Math.cos(a) * 15.0 - 9.0
+        );
+        m.lookAt(0, 0, 8.0);
+      }
+      m.scale.setScalar(0.82 + fft * 0.28 + (i % 4 === state.activeHitIdx ? state.kickEnv * 0.15 : 0));
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE EFFECT A: 32 INDUSTRIAL GUILLOTINE LIGHT-RIBS & CYBER-GRID TUNNEL
+  // --------------------------------------------------------------------------
+  if (copperBoingGroup.visible) {
+    checkerTex.offset.y = (t * (part.id === 4 ? 1.4 : 3.2)) % 1.0;
+    checkerTex.offset.x = Math.sin(t * 0.8) * 0.35;
+    checkerFloor.visible = (part.id >= 5);
+    checkerCeiling.visible = (part.id === 7 || part.id === 9);
+
+    // 32 3D Guillotine Light-Ribs forming a 4-walled slamming cage around the Monument & Text
+    for (let i = 0; i < COPPER_COUNT; i++) {
+      const bin = (freqData[(i * 2) % 64] || 0) / 255;
+      const wall = i % 4; // 0 = top, 1 = bottom, 2 = left, 3 = right
+      const depthIdx = Math.floor(i / 4); // 0..7
+      const z = -2.5 - depthIdx * 4.2 + ((t * 16.0) % 4.2);
+      const crush = (part.id === 7 ? 8.2 : 9.8) - state.kickEnv * 1.8 - bin * 1.6;
+
+      if (wall === 0) {
+        dummy.position.set(0, crush * 0.78, z);
+        dummy.rotation.set(0, 0, Math.sin(t * 2.0 + depthIdx) * 0.08);
+      } else if (wall === 1) {
+        dummy.position.set(0, -crush * 0.78, z);
+        dummy.rotation.set(0, 0, -Math.sin(t * 2.0 + depthIdx) * 0.08);
+      } else if (wall === 2) {
+        dummy.position.set(-crush * 1.25, 0, z);
+        dummy.rotation.set(0, 0, Math.PI * 0.5 + Math.sin(t * 2.0 + depthIdx) * 0.08);
+      } else {
+        dummy.position.set(crush * 1.25, 0, z);
+        dummy.rotation.set(0, 0, Math.PI * 0.5 - Math.sin(t * 2.0 + depthIdx) * 0.08);
+      }
+      dummy.scale.set(0.85, 1.0 + bin * 2.4 + state.snareEnv * 1.2, 1.0 + state.kickEnv * 0.8);
+      dummy.updateMatrix();
+      copperBarsInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    copperBarsInstanced.instanceMatrix.needsUpdate = true;
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE EFFECT B: 160 OCTAHEDRAL SHARDS
+  // --------------------------------------------------------------------------
+  if (glenzMetaballGroup.visible) {
+    // 160 High-Velocity 3D Octahedral Shards swirling in a twin-helix shockwave around the stage
+    for (let i = 0; i < METABALL_COUNT; i++) {
+      const u = i / METABALL_COUNT;
+      const strand = i % 2 === 0 ? 1 : -1;
+      const a = u * Math.PI * 10.0 + t * (2.8 * strand);
+      const r = 9.0 + Math.sin(u * Math.PI * 6.0 + t * 4.0) * 3.2 + state.kickEnv * 2.4;
+      const mx = Math.cos(a) * r;
+      const my = Math.sin(a) * r * 0.72;
+      const mz = -1.5 + Math.cos(u * Math.PI * 4.0 + t * 3.0) * 5.5;
+      dummy.position.set(mx, my, mz);
+      dummy.rotation.set(t * 4.0 + i, t * 3.2 - i, state.kickEnv);
+      const bin = (freqData[i % 64] || 0) / 255;
+      const ms = 0.55 + bin * 0.95 + state.kickEnv * 0.55;
+      dummy.scale.setScalar(ms);
+      dummy.updateMatrix();
+      metaballInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    metaballInstanced.instanceMatrix.needsUpdate = true;
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE EFFECT C: DUAL-VAULT 3D AUDIO-FFT TRENCH & 16 CONVERGING LASERS
+  // --------------------------------------------------------------------------
+  if (canyonGroup.visible) {
+    const pos = canyonGeo.attributes.position;
+    const cols = CANYON_W + 1;
+    const rows = CANYON_D + 1;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const px = pos.getX(idx);
+        const py = pos.getY(idx);
+        const valley = Math.min(1.0, Math.pow(Math.abs(px) / 9.0, 1.5));
+        const bin = (freqData[(r + Math.abs(c - 20)) % 64] || 0) / 255;
+        const wave = Math.sin(py * 0.25 - t * 16.0) * 2.2 + bin * (7.5 + state.kickEnv * 4.0);
+        pos.setZ(idx, valley * wave);
+      }
+    }
+    pos.needsUpdate = true;
+    canyonCeilingMesh.visible = (part.id === 8 || part.id === 9);
+    canyonWireMat.color.setHex(
+      part.id === 10
+        ? (state.activeHitIdx % 2 === 0 ? 0xff0066 : 0xffdd00)
+        : (state.activeHitIdx % 2 === 0 ? 0x00f0ff : 0xff0055)
+    );
+
+    for (let i = 0; i < laserLines.length; i++) {
+      const l = laserLines[i];
+      const ang = (i / laserLines.length) * Math.PI * 2 + t * 0.9;
+      const rad = 10.5 + (i % 3) * 2.5 - state.kickEnv * 1.8;
+      l.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad * 0.75, 0);
+      l.rotation.z = ang + Math.sin(t * 4.0 + i) * 0.25;
+      l.rotation.y = Math.sin(t * 3.0 + i) * 0.18;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE EFFECT D: 140 SWIRLING 3D VORTEX CUBES + 80 3D HEARTS IN PART X
+  // --------------------------------------------------------------------------
+  if (tornadoInstanced.visible) {
+    for (let i = 0; i < TORNADO_COUNT; i++) {
+      const hFrac = i / TORNADO_COUNT;
+      const y = (hFrac - 0.5) * 22.0;
+      const funnelR = 10.5 + Math.abs(hFrac - 0.5) * 16.0;
+      const ang = hFrac * Math.PI * 12.0 + t * (1.8 + hFrac * 1.1);
+      dummy.position.set(Math.cos(ang) * funnelR, y, -8.0 - Math.abs(Math.sin(ang)) * 12.0);
+      dummy.rotation.set(t * 2.4 + i, t * 2.0 - i, state.kickEnv);
+      const ts = 0.55 + ((freqData[i % 64] || 0) / 255) * 0.65 + state.kickEnv * 0.30;
+      dummy.scale.setScalar(ts);
+      dummy.updateMatrix();
+      tornadoInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    tornadoInstanced.instanceMatrix.needsUpdate = true;
+  }
+
+  if (heartInstanced.visible) {
+    for (let i = 0; i < HEART_COUNT; i++) {
+      const hFrac = ((i / HEART_COUNT) + t * 0.18) % 1.0;
+      const y = -9.5 + hFrac * 19.0;
+      const ringA = (i * 0.78) + t * (i % 2 === 0 ? 1.5 : -1.5);
+      const rad = 8.5 + (i % 5) * 2.2 + Math.sin(t * 4.0 + i) * 1.2;
+      const z = -2.5 - Math.abs(Math.sin(ringA * 0.5)) * 10.0;
+      dummy.position.set(Math.cos(ringA) * rad, y, z);
+      dummy.rotation.set(
+        Math.sin(t * 3.0 + i) * 0.25,
+        t * 2.2 + i,
+        Math.cos(t * 2.5 + i) * 0.22
+      );
+      const hs = (0.75 + (i % 3) * 0.25) * (1.0 + state.kickEnv * 0.45);
+      dummy.scale.setScalar(hs);
+      dummy.updateMatrix();
+      heartInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    heartInstanced.instanceMatrix.needsUpdate = true;
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE 125 HERO MFX.GIF CUBES (PARTS I - IV INTRO + PARTS V - X STAGE)
+  // --------------------------------------------------------------------------
+  const isBeatlessIntro = (part.id === 3 || part.id === 4);
+  const isChillPart8 = (part.id === 8);
+  const isSmoothGlide = (isBeatlessIntro || isChillPart8);
+  const isRiser = part.id === 4;
+  const riserProg = isRiser ? Math.max(0, Math.min(1, (t - 39.45) / (52.60 - 39.45))) : 0;
+
+  // In Parts V-X, keep heroCubesMesh group aligned to the stage so the 4-hit formations (and Part X 3D Heart!) frame the Monument & Text cleanly!
+  if (part.id <= 4 || isChillPart8) {
+    const rotSpeedY = isSmoothGlide ? (0.24 + riserProg * 0.45) : (0.42 + chaos * 0.55);
+    heroCubesMesh.rotation.y += dt * rotSpeedY;
+    heroCubesMesh.rotation.x = Math.sin(t * 0.45) * 0.22;
+  } else {
+    heroCubesMesh.rotation.y = THREE.MathUtils.lerp(heroCubesMesh.rotation.y, Math.sin(t * 0.8) * 0.12, dt * 6.0);
+    heroCubesMesh.rotation.x = THREE.MathUtils.lerp(heroCubesMesh.rotation.x, 0, dt * 6.0);
+  }
+
+  for (let i = 0; i < HERO_CUBE_COUNT; i++) {
+    const m = heroCubeMeta[i];
+    if (part.id === 3) {
+      const r = 4.6 + Math.sin(t * 1.4 + m.phi * 3.0) * 0.7 + state.midLevel * 1.4;
+      m.targetPos.set(
+        Math.sin(m.phi) * Math.cos(m.theta) * r,
+        Math.sin(m.phi) * Math.sin(m.theta) * r,
+        Math.cos(m.phi) * r
+      );
+      m.targetScale = 0.86;
+    } else if (isRiser) {
+      // Calm, slow, hypnotic convergence during 0:39.45 - 0:52.60 before the 0:52.60 drop
+      const spA = m.theta + (t - 39.45) * 0.65;
+      const rad = (1.0 - riserProg * 0.55) * (5.8 + (i % 5) * 0.8);
+      const zSp = (1.0 - riserProg * 0.65) * ((i / HERO_CUBE_COUNT - 0.5) * 14.0);
+      m.targetPos.set(Math.cos(spA) * rad, Math.sin(spA) * rad, zSp);
+      m.targetScale = 0.85 - riserProg * 0.15;
+    } else if (isChillPart8) {
+      // Part VIII (2:11.5 - 2:37.8): Calm zero-gravity constellation drifting around the floating 3D chat pills
+      const ringA = (i / HERO_CUBE_COUNT) * Math.PI * 6.0 + t * 0.25;
+      const r = 8.2 + (i % 5) * 1.35 + Math.sin(t * 1.1 + i) * 0.65;
+      const yWave = Math.sin(ringA * 1.5 + t * 0.9) * 4.8;
+      const zWave = -3.0 + Math.cos(ringA + t * 0.7) * 5.2;
+      m.targetPos.set(Math.cos(ringA) * r, yWave, zWave);
+      m.targetScale = 0.76;
+    }
+
+    m.curPos.lerp(m.targetPos, dt * (isSmoothGlide ? 3.8 : 11.5));
+    m.curScale = THREE.MathUtils.lerp(m.curScale, m.targetScale, dt * 10.0);
+
+    const bin = (freqData[i % 64] || 0) / 255;
+    const cubeSpin = isSmoothGlide ? 0.65 : 1.8;
+    dummy.position.copy(m.curPos);
+    dummy.rotation.set(
+      t * cubeSpin * m.rotAxis.x + state.kickEnv * 0.7 + state.snareEnv * 0.9,
+      t * cubeSpin * m.rotAxis.y + state.kickEnv * 0.7,
+      t * cubeSpin * m.rotAxis.z
+    );
+    dummy.scale.setScalar(Math.max(0.001, m.curScale * (1.0 + state.kickEnv * 0.35 + bin * 0.25)));
+    dummy.updateMatrix();
+    heroCubesMesh.setMatrixAt(i, dummy.matrix);
+  }
+  heroCubesMesh.instanceMatrix.needsUpdate = true;
+
+  // --------------------------------------------------------------------------
+  // ANIMATE 64 3D EQUALIZER TOWERS (SYNCED TO FFT & HI-HATS)
+  // --------------------------------------------------------------------------
+  if (eqInstanced.visible) {
+    for (let i = 0; i < EQ_COUNT; i++) {
+      const bin = (freqData[i] || 0) / 255;
+      const height = 0.5 + bin * 12.0 + state.hatEnv * 3.5;
+      const side = i % 2 === 0 ? -1 : 1;
+      const row = Math.floor(i / 2);
+      const x = side * (12.5 + Math.sin(row * 0.3 + t * 1.5) * 1.8);
+      const z = -row * 2.2 + 8.0;
+      dummy.position.set(x, -6.5 + height * 0.5, z);
+      dummy.rotation.set(0, 0, side * state.snareEnv * 0.25);
+      dummy.scale.set(1.0 + state.hatEnv * 0.5, height, 1.0);
+      dummy.updateMatrix();
+      eqInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    eqInstanced.instanceMatrix.needsUpdate = true;
+  }
+
+  // --------------------------------------------------------------------------
+  // ANIMATE 220 OUTER TUNNEL MFX.GIF CUBES & NEON PORTALS
+  // --------------------------------------------------------------------------
+  const tunnelSpeed = isRiser
+    ? (9.0 + riserProg * 6.0)
+    : ((part.id === 1 ? 10.0 : 18.0) + chaos * 24.0);
+  state.tunnelOffset = ((state.tunnelOffset || 0) + dt * tunnelSpeed) % 9600;
+
+  if (outerCubesMesh.visible) {
+    for (let i = 0; i < OUTER_CUBE_COUNT; i++) {
+      const a = (i / OUTER_CUBE_COUNT) * Math.PI * 10 + t * (isRiser ? 0.25 : (0.4 + chaos * 0.9));
+      const rad = 13.5 + (i % 6) * 2.5 - state.kickEnv * 1.6;
+      const z = ((i * 0.45 + state.tunnelOffset) % 96) - 76;
+      dummy.position.set(Math.cos(a) * rad, Math.sin(a) * rad, z);
+      dummy.rotation.set(t * 1.4 + i, t * 1.8 - i, state.kickEnv);
+      const s = 0.6 + state.kickEnv * 0.65 + ((freqData[i % 64] || 0) / 255) * 0.7;
+      dummy.scale.setScalar(s);
+      dummy.updateMatrix();
+      outerCubesMesh.setMatrixAt(i, dummy.matrix);
+    }
+    outerCubesMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  if (portalGroup.visible) {
+    for (let i = 0; i < portals.length; i++) {
+      const p = portals[i];
+      p.position.z = ((i * 7.0 + state.tunnelOffset * 0.75) % 84) - 68;
+      p.rotation.z = t * (i % 2 === 0 ? 0.25 : -0.25) + state.snareEnv * 0.25;
+      const ps = 1.0 + state.subLevel * 0.4;
+      p.scale.set(ps, ps, 1);
+    }
+  }
+
+  // 3D Oscilloscope Waveform Ribbon (4x+ thick ribbon mesh synced to vocals & mid frequencies)
+  const isPart9Crazy = (part.id === 9);
+  const isRedScene = (part.id === 4 || part.id === 7 || part.id === 10 || (isPart9Crazy && state.invertEnv > 0.45));
+  if (ringLine.visible) {
+    ringLine.material.color.setHex(isRedScene ? 0x00f0ff : 0xff1234);
+    const posAttr = ringGeo.attributes.position;
+    const hw = RING_RIBBON_HALF_W * (1.0 + state.kickEnv * 0.45);
+    for (let i = 0; i <= RING_PTS; i++) {
+      const idx = i % RING_PTS;
+      const a = (idx / RING_PTS) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const wave = ((timeData[idx] || 128) - 128) / 128;
+      const r = (t < 52.55 ? 5.2 : 8.8) + wave * (2.2 + state.midLevel * 4.0 + state.kickEnv * 2.2);
+      const rz = Math.sin(a * 6 + t * 6) * 1.0;
+      posAttr.setXYZ(i * 2, ca * (r - hw), sa * (r - hw), rz);
+      posAttr.setXYZ(i * 2 + 1, ca * (r + hw), sa * (r + hw), rz);
+    }
+    posAttr.needsUpdate = true;
+  }
+
+  // Dynamic Strobe & Part Lighting Palette
+  strobeLight.intensity = state.snareEnv * 12 + state.hatEnv * 6 + state.invertEnv * (isPart9Crazy ? 32 : 20);
+  if (part.id === 10) {
+    scene.background.setHex(0x180412);
+  } else if (part.id === 4 || part.id === 7) {
+    scene.background.setHex(0x12040a);
+  } else if (part.id === 8) {
+    scene.background.setHex(0x030b14);
+  } else if (isPart9Crazy) {
+    scene.background.setHex(state.invertEnv > 0.45 ? 0x240018 : 0x050214);
+  } else {
+    scene.background.setHex(0x04060c);
+  }
+
+  // Camera update: slow, smooth, continuous glide during the beatless 0:26.30 - 0:52.60 section (Parts III & IV) and Chill Part VIII (2:11.5 - 2:37.8)
+  if (part.id === 3) {
+    const p3Time = t - 26.30;
+    state.camTargetPos.set(
+      Math.sin(p3Time * 0.45) * 3.2,
+      Math.cos(p3Time * 0.35) * 2.0,
+      13.2 + Math.sin(p3Time * 0.3) * 1.0
+    );
+    state.camTargetLook.set(0, 0, 0);
+    state.camTargetRoll = Math.sin(p3Time * 0.5) * 0.08;
+  } else if (isRiser) {
+    state.camTargetPos.set(
+      Math.sin((t - 39.45) * 0.55) * (2.6 - riserProg * 1.5),
+      Math.cos((t - 39.45) * 0.45) * (1.8 - riserProg * 1.1),
+      13.5 - riserProg * 2.8
+    );
+    state.camTargetLook.set(0, 0, 0);
+    state.camTargetRoll = Math.sin((t - 39.45) * 0.8) * 0.09;
+  } else if (isChillPart8) {
+    const p8Time = t - 131.51;
+    state.camTargetPos.set(
+      Math.sin(p8Time * 0.38) * 2.8,
+      Math.cos(p8Time * 0.30) * 1.6,
+      12.8 + Math.sin(p8Time * 0.25) * 0.9
+    );
+    state.camTargetLook.set(0, 0.1, 0);
+    state.camTargetRoll = Math.sin(p8Time * 0.42) * 0.06;
+  }
+
+  const isCrimeBarAny = isCrimeHoldBar || CRIME_3D_BOM_BAR_SET.has(currentBar);
+  camera.position.lerp(state.camTargetPos, dt * (isSmoothGlide ? 3.2 : (isPart9Crazy ? 4.2 : 8.0)));
+  state.camLook.lerp(state.camTargetLook, dt * (isSmoothGlide ? 3.8 : (isPart9Crazy ? 4.8 : 9.0)));
+  const shakeMult = isCrimeHoldBar ? 0.0 : (isPart9Crazy ? 0.22 : 1.0);
+  const shake = isSmoothGlide ? 0 : (((state.kickEnv * (0.14 + chaos * 0.35)) + (state.snareEnv * 0.16)) * shakeMult);
+  camera.position.x += (Math.random() - 0.5) * shake;
+  camera.position.y += (Math.random() - 0.5) * shake;
+  camera.fov = 60 + state.kickEnv * (isPart9Crazy ? 1.4 : (2.5 + chaos * 3.5));
+  camera.updateProjectionMatrix();
+  camera.lookAt(state.camLook);
+  state.camRoll = THREE.MathUtils.lerp(state.camRoll, state.camTargetRoll, dt * (isSmoothGlide ? 3.2 : 5.0));
+  camera.rotation.z += state.camRoll + (isPart9Crazy ? Math.sin(t * 1.4) * 0.012 : (!isSmoothGlide && chaos > 0.8 ? Math.sin(t * 2.2) * (chaos - 0.75) * 0.18 : 0));
+
+  // Post-Processing Shader Uniforms (intense uOverdrive in Part IX & "VIBECODING IS NOT A CRIME" while camera stays steady!)
+  postUniforms.uTime.value = t;
+  postUniforms.uChromatic.value = 0.002 + state.kickEnv * (0.006 + chaos * (isPart9Crazy ? 0.036 : 0.018)) + state.snareEnv * (isPart9Crazy ? 0.018 : 0.008);
+  postUniforms.uGlitch.value = (isSmoothGlide ? 0.02 : (state.glitchTear + state.snareEnv * 0.35) * (isPart9Crazy ? 1.25 : (0.45 + chaos * 0.7)));
+  postUniforms.uZoomPunch.value = state.kickEnv * (isPart9Crazy ? 0.06 : (isSmoothGlide ? 0.02 : 0.08));
+  postUniforms.uInvert.value = isSmoothGlide ? 0 : state.invertEnv;
+  postUniforms.uOverdrive.value = isPart9Crazy
+    ? (isCrimeBarAny ? Math.min(1.35, 0.85 + state.kickEnv * 0.45) : Math.min(1.15, 0.55 + state.kickEnv * 0.4 + state.snareEnv * 0.25))
+    : 0.0;
+
+  renderer.setRenderTarget(renderTarget);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(postScene, postCam);
+}
+
+// ============================================================================
+// 13. INPUT HANDLERS (KEYS 1-9, 0 JUMP TO THE 10 DEMO PARTS)
+// ============================================================================
+dom.startScreen.addEventListener('click', () => launchDemo(0));
+renderer.domElement.addEventListener('click', () => {
+  if (!state.hasStarted) launchDemo(0);
+  else togglePlay();
+});
+
+dom.edgeScrubber.addEventListener('click', (e) => {
+  const rect = dom.edgeScrubber.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const targetSec = ratio * BEATMAP.duration;
+  if (!state.hasStarted) launchDemo(targetSec);
+  else seekTo(targetSec);
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    togglePlay();
+  } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    const stepSec = (e.shiftKey ? 8 : 2) * BAR_SEC;
+    const baseTime = state.hasStarted ? audioEl.currentTime : 0;
+    const targetSec = Math.max(0, baseTime - stepSec);
+    if (!state.hasStarted) launchDemo(targetSec);
+    else seekTo(targetSec);
+  } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    const stepSec = (e.shiftKey ? 8 : 2) * BAR_SEC;
+    const baseTime = state.hasStarted ? audioEl.currentTime : 0;
+    const targetSec = Math.min(BEATMAP.duration - 0.5, baseTime + stepSec);
+    if (!state.hasStarted) launchDemo(targetSec);
+    else seekTo(targetSec);
+  } else if (e.key >= '1' && e.key <= '9') {
+    const p = DEMO_PARTS[Number(e.key) - 1];
+    if (p) launchDemo(p.startTime);
+  } else if (e.key === '0') {
+    const p = DEMO_PARTS[9];
+    if (p) launchDemo(p.startTime);
+  }
+});
+
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const pr = Math.min(window.devicePixelRatio, 2);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  renderTarget.setSize(w * pr, h * pr);
+  postUniforms.uResolution.value.set(w, h);
+});
+
+function precompileAllShadersAndGeometries() {
+  // 1) Pre-extrude all Impact glyph geometries once at startup
+  for (const ch of Object.keys(IMPACT_GLYPHS)) {
+    getOrCreateGlyphGeos(ch);
+  }
+
+  // 2) Pre-cache all 3D word templates used across the demo
+  for (let h = 0; h < 4; h++) {
+    getOrCreateWordTemplate(BEAT_TOKENS[h], h);
+  }
+  const crimeTokens = ['VIBECODING', 'IS', 'NOT', 'A CRIME!'];
+  for (let h = 0; h < 4; h++) {
+    getOrCreateWordTemplate(crimeTokens[h], h);
+  }
+  getOrCreateWordTemplate('VIBECODING\nIS NOT\nA CRIME!', 1);
+  getOrCreateWordTemplate('VIBECODING\nIS NOT\nA CRIME!', 3);
+
+  const allQuoteLists = [PROD_QUOTES, FORUM_QUOTES, HATER_KISSES];
+  for (const list of allQuoteLists) {
+    for (const item of list) {
+      if (item.beatTokens && item.beatTokens.length === 4) {
+        for (let h = 0; h < 4; h++) {
+          getOrCreateWordTemplate(item.beatTokens[h], h);
+        }
+      }
+    }
+  }
+  for (const toks of HATER_KISSES_ROUND2_TOKENS) {
+    if (toks && toks.length === 4) {
+      for (let h = 0; h < 4; h++) {
+        getOrCreateWordTemplate(toks[h], h);
+      }
+    }
+  }
+
+  // Temporarily populate word3DMesh with all 4 material styles so WebGL compiles all 4
+  for (let h = 0; h < 4; h++) {
+    const tpl = getOrCreateWordTemplate(BEAT_TOKENS[h], h);
+    if (tpl.letterDefs[0]) {
+      word3DMesh.add(tpl.letterDefs[0].holder);
+    }
+  }
+
+  // 3) Upload all procedural CanvasTextures to the GPU upfront
+  const initialTextures = [
+    mfxCubeTex,
+    checkerTex,
+    heroHeaderTex,
+    heroCommentTex,
+    heroTopicTex,
+    stampHammerTex
+  ];
+  for (const tex of initialTextures) {
+    if (tex) renderer.initTexture(tex);
+  }
+  for (const entry of avatarCubeTexCache.values()) {
+    if (entry?.tex) renderer.initTexture(entry.tex);
+  }
+  for (const mon of arenaMonuments) {
+    if (mon?.userData?.ltex) renderer.initTexture(mon.userData.ltex);
+  }
+
+  // 4) Temporarily force all scene groups/meshes visible & unculled for full shader + VAO warm-up
+  const savedVis = new Map();
+  const savedCull = new Map();
+  scene.traverse((obj) => {
+    savedVis.set(obj, obj.visible);
+    obj.visible = true;
+    if (obj.isMesh || obj.isInstancedMesh || obj.isLine) {
+      savedCull.set(obj, obj.frustumCulled);
+      obj.frustumCulled = false;
+    }
+  });
+
+  // Compile all scene & post-processing shaders and run a warm-up GPU render pass
+  renderer.compile(scene, camera);
+  renderer.compile(postScene, postCam);
+
+  postUniforms.uOverdrive.value = 0.5;
+  postUniforms.uInvert.value = 0.5;
+  renderer.setRenderTarget(renderTarget);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(postScene, postCam);
+  postUniforms.uOverdrive.value = 0.0;
+  postUniforms.uInvert.value = 0.0;
+
+  // Restore original visibility & frustumCulled states
+  scene.traverse((obj) => {
+    if (savedVis.has(obj)) obj.visible = savedVis.get(obj);
+    if (savedCull.has(obj)) obj.frustumCulled = savedCull.get(obj);
+  });
+  while (word3DMesh.children.length > 0) {
+    word3DMesh.remove(word3DMesh.children[0]);
+  }
+}
+
+precompileAllShadersAndGeometries();
+updateIntroCubeFormation(0, 0);
+requestAnimationFrame(animate);

@@ -1,0 +1,186 @@
+:root {
+  --bg: #04060a;
+  --pouet-blue: #396ba5;
+  --red: #ff1234;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: #fff;
+  font-family: var(--font-mono);
+  user-select: none;
+  cursor: crosshair;
+}
+
+#webgl-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+#webgl-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Minimal bottom edge scrubber */
+#edge-scrubber {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: 10;
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+
+#edge-scrubber:hover {
+  height: 14px;
+  background: rgba(57, 107, 165, 0.45);
+}
+
+#edge-progress {
+  height: 100%;
+  width: 0%;
+  background: var(--red);
+  box-shadow: 0 0 12px var(--red);
+  pointer-events: none;
+}
+
+/* Minimal Click-to-Start Screen */
+#start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(4, 6, 10, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+}
+
+#start-screen.hidden {
+  display: none;
+}
+
+.start-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.start-avatar {
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+  border: 4px solid #fff;
+  box-shadow: 8px 8px 0 var(--pouet-blue);
+}
+
+.start-sub {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.14em;
+  background: #000;
+  padding: 8px 16px;
+  border: 2px solid var(--pouet-blue);
+}
+
+.start-credit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+  letter-spacing: 0.12em;
+}
+
+/* 2D Live Typewriter Overlay on top of the 3D Screen */
+#ai-typing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vw 8vw;
+  mix-blend-mode: screen;
+  mix-blend-mode: plus-lighter;
+}
+
+#ai-typing-overlay.hidden {
+  display: none;
+}
+
+.ai-typing-inner {
+  width: 100%;
+  max-width: 1080px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#ai-typing-speaker,
+#ai-typing-reply {
+  display: none;
+}
+
+#ai-typing-text {
+  font-family: var(--font-mono);
+  font-size: clamp(22px, 3.0vw, 42px);
+  font-weight: 800;
+  line-height: 1.38;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.38);
+  min-height: 1.5em;
+}
+
+#ai-typing-text::after {
+  content: '█';
+  display: inline-block;
+  margin-left: 2px;
+  animation: ai-cursor-blink 0.34s steps(1, end) infinite;
+}
+
+#ai-typing-text.crazy-blink::after {
+  display: none;
+}
+
+@keyframes ai-cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+#ai-typing-text.crazy-blink {
+  font-family: var(--font-impact);
+  font-size: clamp(42px, 7.2vw, 108px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 36px rgba(255, 255, 255, 0.85),
+    0 0 72px rgba(255, 0, 102, 0.75);
+}
