@@ -251,6 +251,18 @@ const HATER_KISSES = [
   }
 ];
 
+// kaneel's comments about mrdoob on Fable 64 (prod 106815) and With Pride (prod 107068), slammed one per
+// 4-hit BOM pattern through the thumb swarm (Bars 128..140)
+const KANEEL_SWARM_TOKENS = [
+  ['RICARDO', 'DOOBIFOO', 'LITTLE', 'PENIS'],
+  ['REMEMBER', 'TO HATE', 'ON', 'MRDOOB'],
+  ['EVERY BASIC', 'VIBECODING', 'LITTLE', 'BITCHES'],
+  ['RTFM,', 'LEARN', 'PROGRAMMING', 'HA!'],
+  ['WELL DONE,', 'SLOW CLAP,', 'GREAT', 'MOVE!'],
+  ['SPANISH', 'FASCISTA.', 'YOU NEVER', 'KNOW.'],
+  ['WHO\'S', 'LAUGHING', 'NOW?', 'AHAH']
+];
+
 const HATER_KISSES_ROUND2_TOKENS = [
   ['WE LOVE', 'YOU', 'UNCLE-X', 'XOXO <3'],
   ['WE LOVE', 'YOU', '4GENTE', 'MWAH <3'],
@@ -317,7 +329,7 @@ function getChaosLevel(t) {
 }
 
 // The song's climax (3:04 - 3:56) gets two looks of its own instead of more Part IX:
-// 1 = monochrome rectangle tunnel run (Bars 112..125), 2 = thumb swarm (Bars 126..143, MOD ALERT to SYSTEM OVERRIDE)
+// 1 = monochrome rectangle tunnel run (Bars 112..125), 2 = thumb swarm (Bars 126..143, between two kaneel quotes)
 function getClimaxPhase(barNum) {
   if (barNum >= 112 && barNum < 126) return 1;
   if (barNum >= 126 && barNum < 144) return 2;
@@ -1939,14 +1951,14 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 126,
     endBar: 128,
-    text: '[MOD ALERT] 800+ pouët forum replies detected... @havoc is reaching for the lock button...',
-    typeSec: 2.4
+    text: '"i won\'t give you the pleasure of a thumb down considering that must make you happy" — @kaneel',
+    typeSec: 1.8 // Fast, so the long quote can be read within the 2 bar break
   },
   {
     startBar: 142,
     endBar: 144,
-    text: '[SYSTEM OVERRIDE] rage buffer full... switching AI to unconditional love mode for our favorite haters <3',
-    typeSec: 2.5
+    text: '"hey ricardo, fuck you!" — @kaneel',
+    typeSec: 1.4
   }
 ];
 
@@ -2570,13 +2582,6 @@ const swarmFormations = {
     const a = y * 0.75 + strand * Math.PI;
     p.set(Math.cos(a) * 5.5, y, Math.sin(a) * 5.5);
   }),
-  heart: makeFormation((i, u, p) => {
-    const a = i * GOLDEN_ANGLE;
-    const fill = Math.sqrt((i * 0.6180339) % 1);
-    const x = 16 * Math.pow(Math.sin(a), 3);
-    const y = 13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a);
-    p.set(x * 0.55 * fill, (y + 2) * 0.55 * fill, ((i * 0.37) % 1 - 0.5) * 2.0);
-  }),
   lol: makeTextFormation('LOL', 7.5),
   f: makeTextFormation('F', 11.5),
   u: makeTextFormation('U', 11.5),
@@ -2589,11 +2594,10 @@ const swarmFormations = {
 // answer slams, then a torus or a helix on the third
 const SWARM_WORD_SHAPES = ['f', 'u', 'c', 'k'];
 // Shapes that read from the front stay facing the camera; the rest spin
-const SWARM_FLAT_SHAPES = new Set(['lol', 'f', 'u', 'c', 'k', 'a', 'i', 'heart']);
+const SWARM_FLAT_SHAPES = new Set(['lol', 'f', 'u', 'c', 'k', 'a', 'i']);
 // Picked to read on the swarm half's red background
 const SWARM_HIT_COLORS = [0xffffff, 0xffdd33, 0x33eeff, 0xffffff].map((c) => new THREE.Color(c));
 const SWARM_WHITE = new THREE.Color(0xffffff);
-const SWARM_HEART_PINK = new THREE.Color(0xffd0e4);
 const thumbGeo = new THREE.PlaneGeometry(1.7, 1.7);
 const thumbsDownInstanced = new THREE.InstancedMesh(
   thumbGeo,
@@ -3022,6 +3026,10 @@ function triggerBomHit(bomEv) {
           ...item,
           beatTokens: BEAT_TOKENS
         };
+      } else if (getClimaxPhase(bomEv.bar) === 2) {
+        const kaneelTokens = KANEEL_SWARM_TOKENS[Math.max(0, (bomEv.bar - 128) / 2) % KANEEL_SWARM_TOKENS.length];
+        state.activeBeatTokens = kaneelTokens;
+        item = { ...item, beatTokens: kaneelTokens };
       } else if (CRIME_3D_BOM_BAR_SET.has(bomEv.bar)) {
         state.activeBeatTokens = ['VIBECODING', 'IS', 'NOT', 'A CRIME!'];
         item = {
@@ -3905,9 +3913,9 @@ function animate(nowMs) {
     // In the rectangle tunnel the thumbs swirl inside the frames, following its bend, clear of the words.
     // In the second half they swarm into a new shape on every BOM hit.
     // The thumbs-up get popped on every 4th BOM hit and slowly grow back.
-    // Swarm shape: it opens by spelling LOL through the MOD ALERT break, then spells FUCK AI one
-    // letter per BOM hit and answer slam (with a torus or helix to close each pattern), and forms a heart for the love-mode break
-    const swarmShapeNow = currentBar >= 142 ? 'heart' : (currentBar < 128 ? 'lol' : state.swarmShape);
+    // Swarm shape: LOL through the two kaneel quote breaks that open and close the section, and in between it
+    // spells FUCK AI one letter per BOM hit and answer slam (with a torus or helix to close each pattern)
+    const swarmShapeNow = (currentBar < 128 || currentBar >= 142) ? 'lol' : state.swarmShape;
     const swarmTarget = swarmFormations[swarmShapeNow] || swarmFormations.cloud;
     const swarmSpin = SWARM_FLAT_SHAPES.has(swarmShapeNow) ? Math.sin(t * 1.5) * 0.25 : t * 0.7;
     const spinCos = Math.cos(swarmSpin);
@@ -3915,11 +3923,11 @@ function animate(nowMs) {
     const swarmTilt = SWARM_FLAT_SHAPES.has(swarmShapeNow) ? 0 : 0.55;
     const tiltCos = Math.cos(swarmTilt);
     const tiltSin = Math.sin(swarmTilt);
-    const swarmGrow = 1.0 + state.thumbBurstEnv * 0.18 + (swarmShapeNow === 'heart' ? state.kickEnv * 0.08 : 0);
+    const swarmGrow = 1.0 + state.thumbBurstEnv * 0.18;
     const swarmFollow = 1.0 - Math.exp(-dt * 9.0);
     const swarmTint = climaxPhase !== 2
       ? SWARM_WHITE
-      : (swarmShapeNow === 'heart' ? SWARM_HEART_PINK : (currentBar < 128 ? SWARM_WHITE : SWARM_HIT_COLORS[state.activeHitIdx]));
+      : (swarmShapeNow === 'lol' ? SWARM_WHITE : SWARM_HIT_COLORS[state.activeHitIdx]);
     thumbsDownInstanced.material.color.lerp(swarmTint, swarmFollow);
     const flow = climaxPhase === 1 ? (t - 112 * BAR_SEC) * 42.0 : (t - 126 * BAR_SEC) * 24.0;
     for (let i = 0; i < THUMB_DOWN_COUNT + THUMB_UP_COUNT; i++) {
@@ -4349,7 +4357,7 @@ function precompileAllShadersAndGeometries() {
       }
     }
   }
-  for (const toks of HATER_KISSES_ROUND2_TOKENS) {
+  for (const toks of [...HATER_KISSES_ROUND2_TOKENS, ...KANEEL_SWARM_TOKENS]) {
     if (toks && toks.length === 4) {
       for (let h = 0; h < 4; h++) {
         getOrCreateWordTemplate(toks[h], h);
