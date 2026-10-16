@@ -1881,7 +1881,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 16,
     endBar: 20,
-    text: '"look mum, i can do demos now!"',
+    text: '"look mum (rip), i can do demos now!"',
     typeSec: 2.0
   },
   {
@@ -1907,7 +1907,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 46,
     endBar: 48,
-    text: '> agy "pouët says it sucks"\nyou\'re absolutely right!',
+    text: '> agy "pouët says it sucks"\nthey\'re absolutely right!',
     typeSec: 1.8
   },
   {
