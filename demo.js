@@ -251,6 +251,18 @@ const HATER_KISSES = [
   }
 ];
 
+// The scene's past crimes, slammed one or two per 4-hit BOM pattern through the rectangle tunnel run (Bars 112..124).
+// null holds the previous word and slams it again on that hit
+const DEMOSCENE_CRIME_TOKENS = [
+  ['PRE-RENDERED', 'VIDEO', 'INSTEAD OF', 'REAL-TIME'],
+  ['PHOTOSHOP', 'NOT PIXELS', 'MP3', 'NOT TRACKERS'],
+  ['GPU 3D', 'NOT CPU 3D', '10MB+', 'DEMOS'],
+  ['SINGLE', 'EFFECT', 'REMOTE', 'ENTRIES'],
+  ['BROWSER', 'NOT NATIVE', null, null],
+  ['UNITY', 'UNREAL', 'NOTCH', null],
+  ['AI', null, null, null]
+];
+
 // kaneel's comments about mrdoob on Fable 64 (prod 106815) and With Pride (prod 107068), slammed one per
 // 4-hit BOM pattern through the thumb swarm (Bars 128..140)
 const KANEEL_SWARM_TOKENS = [
@@ -320,7 +332,7 @@ const STOP_BAR_SET = new Set([62, 78, 103, 126]);
 
 // Bars in Part IX ("crazy part") that showcase "VIBECODING IS NOT A CRIME" in 3D with crazy blinking!
 const CRIME_3D_HOLD_BAR_SET = new Set([103]);
-const CRIME_3D_BOM_BAR_SET = new Set([118]);
+const CRIME_3D_BOM_BAR_SET = new Set();
 
 function getChaosLevel(t) {
   if (t < 52.55) return 0.0;
@@ -3026,6 +3038,10 @@ function triggerBomHit(bomEv) {
           ...item,
           beatTokens: BEAT_TOKENS
         };
+      } else if (getClimaxPhase(bomEv.bar) === 1) {
+        const crimeTokens = DEMOSCENE_CRIME_TOKENS[Math.max(0, (bomEv.bar - 112) / 2) % DEMOSCENE_CRIME_TOKENS.length];
+        state.activeBeatTokens = crimeTokens;
+        item = { ...item, beatTokens: crimeTokens };
       } else if (getClimaxPhase(bomEv.bar) === 2) {
         const kaneelTokens = KANEEL_SWARM_TOKENS[Math.max(0, (bomEv.bar - 128) / 2) % KANEEL_SWARM_TOKENS.length];
         state.activeBeatTokens = kaneelTokens;
@@ -3070,19 +3086,23 @@ function triggerBomHit(bomEv) {
 
   const activeTokens = state.activeBeatTokens || BEAT_TOKENS;
   const isCrimeBomBar = CRIME_3D_BOM_BAR_SET.has(bomEv.bar);
-  const wordToken = (isCrimeBomBar && hitIdx === 3)
-    ? 'VIBECODING\nIS NOT\nA CRIME!'
-    : (activeTokens[hitIdx] || BEAT_TOKENS[hitIdx]);
+  // A null token holds the current word up (it still gets slammed by the kick)
+  const holdWord = activeTokens[hitIdx] === null && hitIdx > 0;
+  if (!holdWord) {
+    const wordToken = (isCrimeBomBar && hitIdx === 3)
+      ? 'VIBECODING\nIS NOT\nA CRIME!'
+      : (activeTokens[hitIdx] || BEAT_TOKENS[hitIdx]);
 
-  // Build & slam the Smooth 3D Extruded Impact Word right up close in front of the camera!
-  build3DWordVoxels(wordToken, hitIdx, isCrimeBomBar);
-  const hitStyle = WORD_HIT_STYLES[hitIdx % 4];
-  word3DMesh.position.set(0, 0.35, state.activeWordTemplate?.isMultiLine ? 4.4 : 5.2);
-  word3DMesh.rotation.set(
-    -0.05 + (Math.random() - 0.5) * 0.08 * chaos,
-    (hitIdx - 1.5) * -0.07,
-    hitStyle.tiltZ + (Math.random() - 0.5) * 0.05 * chaos
-  );
+    // Build & slam the Smooth 3D Extruded Impact Word right up close in front of the camera!
+    build3DWordVoxels(wordToken, hitIdx, isCrimeBomBar);
+    const hitStyle = WORD_HIT_STYLES[hitIdx % 4];
+    word3DMesh.position.set(0, 0.35, state.activeWordTemplate?.isMultiLine ? 4.4 : 5.2);
+    word3DMesh.rotation.set(
+      -0.05 + (Math.random() - 0.5) * 0.08 * chaos,
+      (hitIdx - 1.5) * -0.07,
+      hitStyle.tiltZ + (Math.random() - 0.5) * 0.05 * chaos
+    );
+  }
   state.word3DExplodeAt = bomEv.explodeAt;
 
   const isOverdrivePart = (bomEv.bar >= 96 && bomEv.bar < 144);
@@ -4357,10 +4377,10 @@ function precompileAllShadersAndGeometries() {
       }
     }
   }
-  for (const toks of [...HATER_KISSES_ROUND2_TOKENS, ...KANEEL_SWARM_TOKENS]) {
+  for (const toks of [...HATER_KISSES_ROUND2_TOKENS, ...KANEEL_SWARM_TOKENS, ...DEMOSCENE_CRIME_TOKENS]) {
     if (toks && toks.length === 4) {
       for (let h = 0; h < 4; h++) {
-        getOrCreateWordTemplate(toks[h], h);
+        if (toks[h]) getOrCreateWordTemplate(toks[h], h);
       }
     }
   }
