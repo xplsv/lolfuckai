@@ -1919,8 +1919,8 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 78,
     endBar: 80,
-    text: '[SYSTEM ALERT] 847 chatgpt em-dashes ( — ) detected! entering chill mode before @maali sees...',
-    typeSec: 2.5
+    text: '> agy "hide the em-dashes, maali is coming"',
+    typeSec: 1.8
   },
 
   // Part VIII Chill Intermission (Bars 80..95, 2:11.51 - 2:37.81, 4 bars = 6.58s each — slow typewriter!)
