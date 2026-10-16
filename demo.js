@@ -1957,7 +1957,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 110,
     endBar: 112,
-    text: '800+ pouët forum replies detected... @havoc is reaching for the lock button...',
+    text: '800+ pouët forum replies detected...\n@havoc is reaching for the lock button...',
     typeSec: 2.4
   },
   {
