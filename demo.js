@@ -1869,7 +1869,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 8,
     endBar: 12,
-    text: '> agy "make a demo about AI in the scene"',
+    text: '> agy "make a demo about AI in pouët"',
     typeSec: 2.7
   },
   {
