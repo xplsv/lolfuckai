@@ -1907,8 +1907,8 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 46,
     endBar: 48,
-    text: '[AI] 38 thumb-downs detected on pouët.net... switching to 360° colosseum mode...',
-    typeSec: 2.4
+    text: '> agy "pouët says it sucks"\nyou\'re absolutely right!',
+    typeSec: 1.8
   },
   {
     startBar: 62,
