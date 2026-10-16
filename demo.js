@@ -1933,8 +1933,8 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 110,
     endBar: 112,
-    text: '[BILLING ALERT] out of token credits... auto-charging $20.00 to finish this overdrive part...',
-    typeSec: 2.3
+    text: '800+ pouët forum replies detected... @havoc is reaching for the lock button...',
+    typeSec: 2.4
   },
   {
     startBar: 126,
