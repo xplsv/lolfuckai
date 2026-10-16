@@ -1857,20 +1857,20 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 8,
     endBar: 12,
-    text: '> agy --yolo "make me a demoscene prod that everyone on pouët will love"',
-    typeSec: 4.8
+    text: '> agy "make a demo about AI in the scene"',
+    typeSec: 2.7
   },
   {
     startBar: 12,
     endBar: 16,
-    text: 'npm install demoscene-soul... 404 not found... hallucinating human intent instead',
-    typeSec: 5.0
+    text: '> agy "make sure it\'s a substantial contribution for once"',
+    typeSec: 3.5
   },
   {
     startBar: 16,
     endBar: 20,
-    text: 'generating shader... 498 prompts... 499 prompts... maybe on the 500th prompt it will compile',
-    typeSec: 5.0
+    text: '"look mum, i can do demos now!"',
+    typeSec: 2.0
   },
   {
     startBar: 20,
