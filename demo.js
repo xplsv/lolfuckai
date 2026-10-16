@@ -1887,8 +1887,8 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 20,
     endBar: 24,
-    text: 'injecting 4,200 em-dashes ( — ) and uploading to pouet.net... waiting for thumb-ups...',
-    typeSec: 4.9
+    text: '> agy "add more glitches so they think it\'s on purpose"',
+    typeSec: 3.3
   },
   {
     startBar: 24,
@@ -1913,7 +1913,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 62,
     endBar: 64,
-    text: '[OPENAI ERROR 429] rate limit exceeded while generating excuse for pouët comments...',
+    text: 'rate limit exceeded while generating excuse for pouët comments...',
     typeSec: 2.4
   },
   {
