@@ -156,6 +156,7 @@ body {
   color: #ffffff;
   text-shadow: 0 0 24px rgba(255, 255, 255, 0.38);
   min-height: 1.5em;
+  white-space: pre-line; /* Honour line breaks in the typed text */
 }
 
 #ai-typing-text::after {

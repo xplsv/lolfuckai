@@ -1875,8 +1875,8 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 28,
     endBar: 32,
-    text: `"waiting for a demo called 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' ;o)" — dedicated to uncle-x & friends`,
-    typeSec: 4.8
+    text: 'dedicated to mrpet\nthe demoscene didn\'t deserve you :(',
+    typeSec: 3.0 // Leaves a few seconds to read it before the drop
   },
 
   // Musical Breaks & Stop Bars (Pure 2D White Text over 3D Scene — No 3D Monument Box!)
