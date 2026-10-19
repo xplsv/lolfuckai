@@ -1,0 +1,64 @@
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                            x p l s v   p r e s e n t s
+
+          ██    ▄███▄ ██        █████ ██ ██ ▄███▄ ██ ██     ▄███▄ ██
+          ██    ██ ██ ██        ██    ██ ██ ██ ▀▀ ██▄█▀     ██ ██ ██
+          ██    ██ ██ ██        ████  ██ ██ ██    ███       █████ ██
+          ██    ██ ██ ██        ██    ██ ██ ██ ▄▄ ██▀█▄     ██ ██ ██
+          █████ ▀███▀ █████     ██    ▀███▀ ▀███▀ ██ ██     ██ ██ ██
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                               dedicated to mrpet
+                       the demoscene didn't deserve you
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                                    CREDITS
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  Prompting & Direction ........ mrdoob
+  Vibecoding & Glitches ........ Gemini 4 Argon + Claude Opus 5.5
+  Music ........................ Locked Club - "Grandfather Sleeps Loud"
+  3D Engine .................... Three.js (mrdoob & 2.000+ contributors)
+  Dialogue & Art Direction ..... The Pouët.net Comment Section & BBS
+
+  Human Code (three.js) ........ 670 KB
+  AI Code (demo.js) ............ 180 KB
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                                     ABOUT
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  I made this demo to reflect what pouët looked like these days and to put a
+  spotlight on the bullying going on in the community.
+
+  AI haters trashing prod pages and the forum, site moderators locking the
+  threads instead of allowing any kind of dialogue, and senior sceners who
+  have given decades to the demoscene getting disrespected and pushed out
+  just for experimenting with new tools.
+
+  So I fed those prod comments and locked forum threads (#13101, #13104,
+  #13069) straight back into the machine.
+
+  Some people make demos using someone else's engine and node editor.
+  I make demos using my own engine and a chatbot.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                                   MORE INFO
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  * Live URL ...... https://xplsv.github.io/lolfuckai/
+  * Source ........ https://github.com/xplsv/lolfuckai
+  * Controls ...... [CLICK / SPACE]  Start / Pause playback
+                    [KEYS 1 - 8]     Jump directly to demo parts
+                    [BOTTOM EDGE]    Hover & click to scrub timeline
+
+  * Runs in any modern browser with WebGL2 and Web Audio API.
+  * Synced to the hardware Web Audio clock with outputLatency compensation.
+  * Includes a custom GIF89a LZW frame decoder specifically so maali's
+    spinning thumb-down avatar rotates at full frame rate.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                  (c) 2026 XPLSV // VIBECODING IS NOT A CRIME
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
