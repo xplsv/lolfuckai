@@ -1,4 +1,4 @@
-import * as THREE from './vendor/three.module.min.js';
+import * as THREE from './three.module.min.js';
 import {
   ALL_AI_COMMENTS,
   EXACT_COMMENTS,
