@@ -1796,27 +1796,60 @@ const rightPylon = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 2.0), rightPyl
 rightPylon.position.set(8.8, 4.6, 0.8);
 heroMonument.add(leftPylon, rightPylon);
 
-// Giant 3D Red Stamp Hammer that slams onto the 3D Prod/Topic Screen!
+// Rubber stamp: @AUTHOR over a few words in capitals, double border, worn ink. Used on the guillotine's screenshots
+// and as the stamp that slams onto the prod screen. text defaults to the comment
+const stampRand = (n, k) => {
+  const x = Math.sin(n * 91.3 + k * 17.9) * 43758.5453;
+  return x - Math.floor(x);
+};
+function drawCommentStamp(item, n, text = item.comment) {
+  // Light ink on a dark backing, so it still reads under the red duotone
+  const ink = '#fff4f4';
+  const author = `@${(item.author || 'uncle-x').toUpperCase()}`;
+  const words = (text || '').replace(/\s+/g, ' ').trim().toUpperCase();
+  const W = 900;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = 460;
+  const ctx = c.getContext('2d');
+  ctx.font = '900 58px Impact, Anton, sans-serif';
+  const lines = wrapCanvasLines(ctx, words.length > 110 ? `${words.slice(0, 107)}...` : words, W - 110, 3);
+  const h = 44 + 92 + lines.length * 62 + 30;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+  ctx.fillRect(10, 10, W - 20, h - 20);
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 12;
+  ctx.strokeRect(12, 12, W - 24, h - 24);
+  ctx.lineWidth = 5;
+  ctx.strokeRect(30, 30, W - 60, h - 60);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '900 88px Impact, Anton, sans-serif';
+  ctx.fillText(author, W / 2, 124, W - 100);
+  ctx.font = '900 58px Impact, Anton, sans-serif';
+  lines.forEach((l, i) => ctx.fillText(l, W / 2, 196 + i * 62, W - 100));
+  // Worn ink: knock random specks out of the stamp
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 1100; i++) {
+    const r = stampRand(n, i);
+    const x = stampRand(n, i + 1000) * W;
+    const y = stampRand(n, i + 2000) * h;
+    ctx.globalAlpha = 0.2 + r * 0.55;
+    ctx.fillRect(x, y, 1 + r * 4, 1 + stampRand(n, i + 3000) * 3);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  return { canvas: c, h, w: W };
+}
+
+// The stamp that slams onto the 3D prod / topic screen
 const stampHammerCanvas = document.createElement('canvas');
-stampHammerCanvas.width = 512;
-stampHammerCanvas.height = 192;
+stampHammerCanvas.width = 1024;
+stampHammerCanvas.height = 512;
 const stampHammerCtx = stampHammerCanvas.getContext('2d');
 const stampHammerTex = new THREE.CanvasTexture(stampHammerCanvas);
 stampHammerTex.colorSpace = THREE.SRGBColorSpace;
-
-const HATER_STAMP_ROASTS = {
-  'uncle-x': { top: 'MEAT PROXY SLOP', sub: 'UNCLE-X :: 1358 GLÖPS OF RAGE', bg: '#dc102c' },
-  '4gente': { top: 'GRANDPA FEELINGS', sub: '4GENTE :: 40 YEARS OF CRINGE', bg: '#b81038' },
-  'okkie': { top: 'DELETE THIS PROD', sub: 'OKKIE :: LIE MACHINE HUNTER', bg: '#cc1428' },
-  'fizzer': { top: '100% ORANGE PEEL', sub: 'FIZZER :: CHATBOT HOBBYIST', bg: '#d94e00' },
-  'maali': { top: 'EM-DASH DETECTED', sub: 'MAALI :: NEVER USE (—) AGAIN!', bg: '#c80048' },
-  'maalinstrippari': { top: 'EM-DASH DETECTED', sub: 'MAALI :: NEVER USE (—) AGAIN!', bg: '#c80048' },
-  'kaneel': { top: 'ZERO EFFORT SLOP', sub: 'KANEEL :: PROMPT != DEMOSCENE', bg: '#9e1040' },
-  'preacher': { top: '500TH PROMPT TRY', sub: 'PREACHER :: SOULLESS SLOT MACHINE', bg: '#7a1258' },
-  'nr4': { top: 'BENCHMARK FAILED', sub: 'NR4 :: 0% HUMAN CODE', bg: '#aa1030' },
-  'bitl': { top: 'GLENZ GRAVITY BUG', sub: 'BITL :: PHYSICS HALLUCINATED', bg: '#16528e' },
-  'havoc': { top: '4TH PLACE DOPING', sub: 'HAVOC :: THREAD LOCKED // RIP', bg: '#991824' }
-};
 
 const STAMP_PLACEMENTS = [
   { x: 3.4, y: -1.25, rotZ: -0.14 },
@@ -1831,25 +1864,12 @@ const STAMP_PLACEMENTS = [
 let stampPlacementCursor = 0;
 let stampBaseRotZ = -0.14;
 
-const stampRimAdditiveMat = new THREE.MeshBasicMaterial({
-  color: 0xff1234,
-  transparent: true,
-  opacity: 0.38,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
-});
-const stampFaceAdditiveMat = new THREE.MeshBasicMaterial({
+const stampFaceMat = new THREE.MeshBasicMaterial({
   map: stampHammerTex,
   transparent: true,
-  opacity: 0.96,
-  blending: THREE.AdditiveBlending,
   depthWrite: false
 });
-
-const stamp3DHammer = new THREE.Mesh(
-  new THREE.BoxGeometry(6.8, 2.5, 0.55),
-  [stampRimAdditiveMat, stampRimAdditiveMat, stampRimAdditiveMat, stampRimAdditiveMat, stampFaceAdditiveMat, stampRimAdditiveMat]
-);
+const stamp3DHammer = new THREE.Mesh(new THREE.PlaneGeometry(6.8, 3.4), stampFaceMat);
 stamp3DHammer.renderOrder = 5;
 stamp3DHammer.position.set(3.4, -1.25, 1.2);
 stamp3DHammer.rotation.z = stampBaseRotZ;
@@ -1866,61 +1886,18 @@ function repositionStampHammer() {
   stamp3DHammer.rotation.z = stampBaseRotZ;
 }
 
+let stampHammerSeed = 0;
 function update3DStampHammer(item) {
   repositionStampHammer();
-
-  const isKisses = item?.sourceType === 'kisses';
-  const isTopic = item?.sourceType === 'topic';
-  const handleKey = (item?.author || 'uncle-x').toLowerCase();
-  const roast = !isKisses ? HATER_STAMP_ROASTS[handleKey] : null;
-
-  const bgCol = isKisses
-    ? '#ff0066'
-    : (item?.customStamp?.bg || roast?.bg || (isTopic ? '#8c1248' : '#dc102c'));
-
-  // Base black (#000000 = transparent in AdditiveBlending) + translucent neon tint so screenshot shines through!
-  stampHammerCtx.globalAlpha = 1.0;
-  stampHammerCtx.fillStyle = '#000000';
-  stampHammerCtx.fillRect(0, 0, 512, 192);
-  stampHammerCtx.globalAlpha = 0.46;
-  stampHammerCtx.fillStyle = bgCol;
-  stampHammerCtx.fillRect(0, 0, 512, 192);
-  stampHammerCtx.globalAlpha = 1.0;
-
-  stampHammerCtx.strokeStyle = '#ffffff';
-  stampHammerCtx.lineWidth = 10;
-  stampHammerCtx.strokeRect(8, 8, 496, 176);
-
-  // Main stamp text in WHITE (#ffffff)
-  const toks = (item?.beatTokens && item.beatTokens.length === 4) ? item.beatTokens : null;
-  let line1 = '';
-  let line2 = '';
-  if (isKisses) {
-    line1 = 'MWAH // XOXO <3';
-    line2 = toks ? `${toks[0]} ${toks[1]} ${toks[2]}` : 'SENDING KISSES';
-  } else if (toks) {
-    line1 = `${toks[0]} ${toks[1]}`.trim();
-    line2 = `${toks[2]} ${toks[3]}`.trim();
-  } else if (roast) {
-    line1 = roast.top;
-    line2 = 'POUËT VERDICT';
-  } else {
-    line1 = isTopic ? 'BBS VERDICT' : 'SUCKS // AI';
-    line2 = 'THUMB DOWN';
-  }
-
-  stampHammerCtx.fillStyle = '#ffffff';
-  stampHammerCtx.textAlign = 'center';
-  stampHammerCtx.font = '900 46px Impact, sans-serif';
-  stampHammerCtx.fillText(line1, 256, 66, 468);
-  stampHammerCtx.fillText(line2, 256, 118, 468);
-
-  // Author in smaller font and different color (#ffdd00 / #00f0ff) at the bottom
-  const authorName = item?.author || 'uncle-x';
-  stampHammerCtx.fillStyle = isKisses ? '#ffdd00' : '#00f0ff';
-  stampHammerCtx.font = 'bold 20px monospace';
-  stampHammerCtx.fillText(`@${authorName}`, 256, 162, 468);
-
+  const toks = (item?.beatTokens || []).filter(Boolean);
+  const text = toks.length
+    ? toks.join(' ')
+    : (item?.customStamp ? `${item.customStamp.top} ${item.customStamp.sub || ''}` : (item?.comment || ''));
+  const stamp = drawCommentStamp(item?.author ? item : { ...item, author: 'pouet' }, ++stampHammerSeed, text);
+  const ctx = stampHammerCtx;
+  ctx.clearRect(0, 0, 1024, 512);
+  const scale = Math.min(1000 / stamp.w, 500 / stamp.h);
+  ctx.drawImage(stamp.canvas, 0, 0, stamp.w, stamp.h, 512 - (stamp.w * scale) / 2, 256 - (stamp.h * scale) / 2, stamp.w * scale, stamp.h * scale);
   stampHammerTex.needsUpdate = true;
 }
 update3DStampHammer(COMMUNITY_QUOTES[0]);
@@ -3165,51 +3142,7 @@ for (let bar = 64; bar <= 77; bar++) {
     for (const step of [1, 7, 13]) CHOP_TIMES.push({ t: bar * BAR_SEC + step * STEP16_SEC, n: CHOP_TIMES.length });
   }
 }
-// Each prod's screenshot with its comment stamped on it in red ink, so the blade cuts through the stamp too
-const stampRand = (n, k) => {
-  const x = Math.sin(n * 91.3 + k * 17.9) * 43758.5453;
-  return x - Math.floor(x);
-};
-function drawCommentStamp(item, n) {
-  // Light ink on a dark backing, so it still reads under the red duotone
-  const ink = '#fff4f4';
-  const author = `@${(item.author || 'uncle-x').toUpperCase()}`;
-  const text = (item.comment || '').replace(/\s+/g, ' ').trim().toUpperCase();
-  const W = 900;
-  const c = document.createElement('canvas');
-  c.width = W;
-  c.height = 460;
-  const ctx = c.getContext('2d');
-  ctx.font = '900 58px Impact, Anton, sans-serif';
-  const lines = wrapCanvasLines(ctx, text.length > 110 ? `${text.slice(0, 107)}...` : text, W - 110, 3);
-  const h = 44 + 92 + lines.length * 62 + 30;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
-  ctx.fillRect(10, 10, W - 20, h - 20);
-  ctx.fillStyle = ink;
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 12;
-  ctx.strokeRect(12, 12, W - 24, h - 24);
-  ctx.lineWidth = 5;
-  ctx.strokeRect(30, 30, W - 60, h - 60);
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.font = '900 88px Impact, Anton, sans-serif';
-  ctx.fillText(author, W / 2, 124, W - 100);
-  ctx.font = '900 58px Impact, Anton, sans-serif';
-  lines.forEach((l, i) => ctx.fillText(l, W / 2, 196 + i * 62, W - 100));
-  // Worn ink: knock random specks out of the stamp
-  ctx.globalCompositeOperation = 'destination-out';
-  for (let i = 0; i < 1100; i++) {
-    const r = stampRand(n, i);
-    const x = stampRand(n, i + 1000) * W;
-    const y = stampRand(n, i + 2000) * h;
-    ctx.globalAlpha = 0.2 + r * 0.55;
-    ctx.fillRect(x, y, 1 + r * 4, 1 + stampRand(n, i + 3000) * 3);
-  }
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-  return { canvas: c, h, w: W };
-}
+// Each prod's screenshot with its comment stamped on it (drawCommentStamp), so the blade cuts through the stamp too
 const stampedShots = new Map();
 function getStampedShot(item, n) {
   if (stampedShots.has(n)) return stampedShots.get(n);
