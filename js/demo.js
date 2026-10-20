@@ -307,10 +307,10 @@ const DEMOSCENE_CRIME_TOKENS = [
   ['PRE-RENDERED', 'VIDEO', 'INSTEAD OF', 'REAL-TIME'],
   ['PHOTOSHOP', 'NOT PIXELS', 'MP3', 'NOT TRACKERS'],
   ['GPU 3D', 'NOT CPU 3D', '10MB+', 'DEMOS'],
-  ['SINGLE', 'EFFECT', 'REMOTE', 'ENTRIES'],
-  ['BROWSER', 'NOT NATIVE', null, null],
-  ['UNITY', 'UNREAL', 'NOTCH', null],
-  ['AI', null, null, null]
+  ['SINGLE', 'EFFECT', 'STOLEN', 'MUSIC'],
+  ['REMOTE', 'ENTRIES', 'BROWSER', 'NOT NATIVE'],
+  ['UNITY', 'UNREAL', 'NOTCH', 'CABLES'],
+  ['FUCKING', 'USING', 'AI', 'LOL']
 ];
 
 // kaneel's comments about mrdoob on Fable 64 (prod 106815) and With Pride (prod 107068), slammed one per
