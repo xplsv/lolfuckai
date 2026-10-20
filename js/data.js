@@ -7592,14 +7592,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-22",
     "comment": "Excuse me for asking, but have you perhaps gone blind? Are you kidding me? This thing is going nowhere. There is 0 dramaturgy, it just drags on and on. Fly in, rotate, zoom, rotate, fly out. Repeat. This is what you call \u201cflow\u201d I guess. The collaged objects are poorly isolated with all kinds of jagged edges and rogue pixels all over the place. This you call \u201ccohesion\u201d I guess. The thing looks like something done on souped up Amiga 2000 (without video toaster) in Scala software circa 1992 by a rookie. Sorry, I\u2019d analyze some more but my brain and eyes bleed from the idea of having to watch it through again. It\u2019s human made slop, peppered all over with AI slop on top.",
     "beatTokens": [
-      "HAVE YOU",
+      "HAVE",
+      "YOU",
       "GONE",
-      "BLIND?",
-      "0 DRAMATURGY"
+      "BLIND?"
     ],
     "customStamp": {
-      "top": "HAVE YOU GONE",
-      "sub": "BLIND? 0 DRAMATURGY // @4GENTE"
+      "top": "HAVE YOU",
+      "sub": "GONE BLIND? // @4GENTE"
     }
   },
   {

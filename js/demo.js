@@ -151,7 +151,7 @@ const FORUM_QUOTES = COMMUNITY_QUOTES.filter((q) => q.sourceType === 'topic');
 // play and nobody repeats back to back. Bar 32 keeps the title, Parts VIII and later have their own text
 const SLAM_PLAYLIST = {
   // Part V: the first drop
-  34: '1052704', 36: '1052667', 38: '1050377', 40: '1028923', 42: '1050590', 44: '1052634',
+  34: '1052704', 36: '1040007', 38: '1050377', 40: '1028923', 42: '1050590', 44: '1043029', 46: '1022223',
   // Part VI: the colosseum
   48: '1003822', 50: '1021256', 52: '1050616', 54: '996031', 56: '1004408', 58: '1050534', 60: '1022551',
   // Part VII: the guillotine
@@ -351,8 +351,8 @@ const INTRO_BOM_BARS = [0, 2, 4, 6, 8, 10, 12, 14];
 
 // Strictly verified 4-hit BOM! BOM! BOM! BOM! bars from 0:52.60 (Bar 32) onwards
 const WORD_BOM_BARS = [
-  // Part V (Bars 32..44; Bars 46-47 are 2D AI text break)
-  32, 34, 36, 38, 40, 42, 44,
+  // Part V (Bars 32..46; Bar 47 is a short break)
+  32, 34, 36, 38, 40, 42, 44, 46,
   // Part VI (Bars 48..60 & 64..76; Bars 62-63 & 78-79 are 2D AI text breaks)
   48, 50, 52, 54, 56, 58, 60,
   64, 66, 68, 70, 72, 74, 76,
@@ -2001,12 +2001,6 @@ const TWOD_TEXT_SEGMENTS = [
   },
 
   // Musical Breaks & Stop Bars (Pure 2D White Text over 3D Scene — No 3D Monument Box!)
-  {
-    startBar: 46,
-    endBar: 48,
-    text: '> agy "pouët says it sucks"\nthey\'re absolutely right!',
-    typeSec: 1.8
-  },
   {
     startBar: 62,
     endBar: 64,
