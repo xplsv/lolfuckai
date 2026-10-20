@@ -7,6 +7,14 @@ import {
 } from './data.js';
 import { IMPACT_GLYPHS } from './impact_font.js';
 
+// Some comments open by quoting someone else ("Quote: ...") before the reply. Keep only the reply, so other
+// people's words never show under the wrong name
+const ownWords = (comment) => (comment || '').replace(/^\s*Quote:[\s\S]*?\n\s*\n/, '').trim();
+for (const q of [...COMMUNITY_QUOTES, ...ALL_AI_COMMENTS]) {
+  q.comment = ownWords(q.comment);
+  for (const p of q.threadContext || []) p.comment = ownWords(p.comment);
+}
+
 // Canvas textures are drawn once at startup and don't redraw when a web font arrives, so wait for
 // Anton (the Impact fallback where Impact isn't installed). Don't hang if Google Fonts is unreachable.
 await Promise.race([
@@ -26,20 +34,44 @@ const BEAT_TOKENS = [
 ];
 
 // Custom 4-word beat tokens for prods that only exist in ALL_AI_COMMENTS so BEAT_TOKENS is never repeated as a fallback!
-const CUSTOM_PROD_BEAT_TOKENS = {
-  '106758': ['PURE', 'CERTIFIED', 'A.I.', 'SLOP.'],
-  '107015': ['HONEST', 'INFOFILE:', 'STILL A', 'PIGGIE!'],
-  '106822': ['I DRAW', 'A LINE', 'RIGHT', 'HERE!'],
-  '106779': ['ARACHNO', 'BOT:', 'SLOP', 'DETECTED!'],
-  '106803': ['REVISION', '2026:', 'INSTANT', 'SUCKS!'],
-  '106694': ['SERPENT', 'IN', 'SLOP', 'PARADISE!'],
-  '103971': ['UNCLE-X', 'SAYS:', 'THUMB', 'DOWN!'],
-  '97475': ['VECTORY', 'TRAIL:', 'ZERO', 'EFFORT!'],
-  '103715': ['THUMB', 'DOWN:', 'OBVIOUS', 'REASONS!'],
-  '104418': ['HERE IS', 'YOUR', 'A.I.', 'THUMB!'],
-  '104005': ['NEXT TIME', 'ASK A', 'HUMAN', 'MUSICIAN!'],
-  '104029': ['SANS A.I.', 'LOADING', 'PICTURE', 'THUMB!'],
-  '96697': ['PARTY', 'CULTURE:', 'NO BOTS', 'ALLOWED!']
+// uncle-x's slams for his own prod comments, taken word for word from each comment (null holds the last word)
+const UNCLE_X_BEAT_TOKENS = {
+  '995036': ["REALLY", "DAMN BORING", "AI CRAP", "SUCKS"],
+  '996051': ["YEAH", "FUCK", "AI.", null],
+  '1003529': ["WHAT", "HAVOC", "SAID.", null],
+  '1003821': ["AI", "OR NOT,", "THIS", "SUCKED."],
+  '1004427': ["AI", "THUMB.", null, null],
+  '1021264': ["WE DON'T", "WANT YOUR", "SLOP.", "FUCK OFF"],
+  '1022551': ["HERE'S YOUR", "AI THUMB.", "ASK", "A HUMAN"],
+  '1022912': ["LOOKING", "FORWARD", "TO IT!", null],
+  '1022918': ["ONLY", "BECAUSE OF", "THE AI", "MUSIC"],
+  '1027576': ["HERE'S", "YOUR", "AI", "THUMB."],
+  '1041053': ["LOL", "FUCK", "AI.", null],
+  '1043029': ["ARE THE GFX", "ACTUALLY", "AI", "SLOP?"],
+  '1045008': ["FOR", "OBVIOUS", "REASONS.", null],
+  '1045009': ["LOL FUCK AI", "FUCKIN'", "GROK", "OF ALL THINGS?"],
+  '1045010': ["LOL", "FUCK", "AI.", null],
+  '1049355': ["LOL", "FUCK", "AI.", null],
+  '1049426': ["LOL", "FUCK", "AI.", null],
+  '1049427': ["LOL", "FUCK", "AI.", null],
+  '1050250': ["LOL", "FUCK", "AI.", null],
+  '1050251': ["LOL", "FUCK", "AI.", null],
+  '1050252': ["LOL", "FUCK", "AI.", null],
+  '1050255': ["LOL", "FUCK", "AI.", null],
+  '1050389': ["LOL", "FUCK", "AI.", null],
+  '1050562': ["LOL", "FUCK", "AI.", null],
+  '1050582': ["LOL", "FUCK AI.", "GROK?", "SERIOUSLY?"],
+  '1050621': ["LOL", "FUCK", "AI.", null],
+  '1052651': ["LOL", "FUCK AI.", "SUCK", "DONKEY DICK"],
+  '1052681': ["3 ACCOUNTS", "FOR HIMSELF", "LAST", "5 DAYS"],
+  '1052706': ["HISTORICAL", "RECORD", "SUCK", "DONKEY DICK"],
+  '1052738': ["DON'T BE", "A", "MEAT", "PROXY"],
+  '1052744': ["DESERVES", "ALL", "THE", "HATE"],
+  '1052785': ["DID AN AI", "WRITE", "THAT", "FOR YOU?"],
+  '1052807': ["HONEST", "ABOUT", "LLM USE", "A PIGGIE"],
+  '1052816': ["IDEA", "GUYS(TM)", "50 ON", "TOKENS"],
+  '1053853': ["GENAI SENSES", "TINGLING", "SOUND LIKE", "SUNO."],
+  '1054304': ["SLOP.", null, null, null]
 };
 
 // Build PROD_QUOTES in strict round-robin order across all 29 unique Pouët prods so every prod is shown once before any prod repeats!
@@ -54,7 +86,7 @@ const PROD_QUOTES = (() => {
       userId: c.userId || '751',
       glops: c.glops || '1358',
       avatarPath: c.avatarPath || 'assets/avatars/mfx.gif',
-      beatTokens: c.beatTokens || CUSTOM_PROD_BEAT_TOKENS[String(c.prodId)] || ['CERTIFIED', 'POUËT', 'THUMB', 'DOWN!']
+      beatTokens: c.beatTokens || UNCLE_X_BEAT_TOKENS[String(c.postId)] || ['LOL', 'FUCK', 'AI.', null]
     }))
   ];
   const byProd = new Map();
@@ -161,7 +193,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_106154.jpg',
     prodName: 'VALENTINE #1 // UNCLE-X (MFX)',
     award: 'SUPREME AI SLOP DESTROYER // 38 SUCKS & FLAMES',
-    comment: 'In short: don’t be a meat proxy. Don’t be surprised when people treat you like a useless slab of meat.',
+    comment: 'In short: don’t be a meat proxy. But if you decide to be one, don’t be surprised when people treat you like a useless slab of meat that adds no value to anything.',
     kissNote: 'MWAH! THANK YOU FOR BEING OUR #1 MUSE <3',
     beatTokens: ['KISSES', 'TO', 'UNCLE-X', 'MWAH <3']
   },
@@ -173,7 +205,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_105992.png',
     prodName: 'VALENTINE #2 // 4GENTE',
     award: 'CHIEF GRANDPA FEELINGS INSPECTOR // 21 FLAMES',
-    comment: 'Dude how dare you say we shouldn’t support soul crushing tech while you’re wearing shoes? SHOES! Gotcha!',
+    comment: 'Dude how dare you say we shouldn’t support fascists and their soul crushing tech while you’re wearing shoes? SHOES! … Gotcha!',
     kissNote: 'SENDING BIG BIO-CENTRIC SMOOCHES TO YOU <3',
     beatTokens: ['KISSES', 'TO', '4GENTE', 'XOXO <3']
   },
@@ -185,7 +217,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_104438.jpg',
     prodName: 'VALENTINE #3 // OKKIE',
     award: 'THE LIE MACHINE HUNTER // 21 SUCKS & FLAMES',
-    comment: 'Oh yeah, this stuff sucks lmao (haven’t watched it) — here is a cool picture of a horse <3',
+    comment: 'actually, an llm would be terrible at this, so lmao but because I love you rob, here is a cool picture of a horse <3',
     kissNote: 'WE WILL NEVER DELETE OUR LOVE FOR YOU OKKIE <3',
     beatTokens: ['SMOOCHES', 'TO', 'OKKIE', 'MWAH <3']
   },
@@ -197,7 +229,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_105917.jpg',
     prodName: 'VALENTINE #4 // FIZZER',
     award: 'ORANGE PEEL SOMMELIER // 18 SUCKS & FLAMES',
-    comment: 'Bitter taste? This is like eating a big plate of orange peels. Category: residue.',
+    comment: 'Bitter taste? This is like eating a big plate of orange peels.',
     kissNote: 'OUR HOBBY IS SENDING KISSES TO FIZZER XOXO <3',
     beatTokens: ['BIG LOVE', 'TO', 'FIZZER', 'XOXO <3']
   },
@@ -209,7 +241,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_105882.png',
     prodName: 'VALENTINE #5 // MAALINSTRIPPARI',
     award: 'EM-DASH EXTERMINATOR // 21 SUCKS & FLAMES',
-    comment: 'An agents.md should be the making of! The only credits involved are the token credits thrown at Claude.',
+    comment: 'the only credits involved are the token credits coat and doob threw at claude',
     kissNote: 'ZERO EM-DASHES, 100% PURE LOVE FOR MAALI <3',
     beatTokens: ['KISSES', 'TO', 'MAALI', 'MWAH <3']
   },
@@ -221,7 +253,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_106154.jpg',
     prodName: 'VALENTINE #6 // KANEEL',
     award: 'POUËT SIN CONFESSOR // 17 SUCKS & FLAMES',
-    comment: 'Sir this is a Wendy’s. Non. Maintenant tu sors merci. I WANT POUET TO ACCEPT MY SINS!',
+    comment: 'I WANT POUET TO ACCEPT MY SINS',
     kissNote: 'GROS BISOUS MON CHER KANEEL XOXO <3',
     beatTokens: ['BISOUS', 'TO', 'KANEEL', 'XOXO <3']
   },
@@ -233,7 +265,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_105672.png',
     prodName: 'VALENTINE #7 // PREACHER',
     award: 'PROPHET OF THE BLEAK FUTURE // 10 SUCKS & FLAMES',
-    comment: 'Not made by human hands. A vantage point into a terrible future where nothing of significance exists.',
+    comment: 'It’s like a vantage point to a terrible future where art or nothing of significance exists at all, while also looking passable from a quick glance.',
     kissNote: 'BLESSINGS & KISSES FROM THE MACHINE PREACHER <3',
     beatTokens: ['KISSES', 'TO', 'PREACHER', 'MWAH <3']
   },
@@ -245,7 +277,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_106129.png',
     prodName: 'VALENTINE #8 // NR4 (TEAM210)',
     award: 'GUARDIAN OF THE CRAFT // 7 SUCKS & FLAMES',
-    comment: ':( please learn the craft, I promise, it is fun! Resource starvation incoming: skill, sadly.',
+    comment: ':( please learn the craft, I promise, it’s fun',
     kissNote: 'BIG LOVE & SALTOING PONIES TO NR4 XOXO <3',
     beatTokens: ['BIG LOVE', 'TO', 'NR4', 'XOXO <3']
   }
@@ -269,10 +301,10 @@ const KANEEL_SWARM_TOKENS = [
   ['RICARDO', 'DOOBIFOO', 'LITTLE', 'PENIS'],
   ['REMEMBER', 'TO HATE', 'ON', 'MRDOOB'],
   ['EVERY BASIC', 'VIBECODING', 'LITTLE', 'BITCHES'],
-  ['RTFM,', 'LEARN', 'PROGRAMMING', 'HA!'],
+  ['LEARN', 'PROGRAMMING', 'RTFM', 'HA!'],
   ['WELL DONE,', 'SLOW CLAP,', 'GREAT', 'MOVE!'],
   ['SPANISH', 'FASCISTA.', 'YOU NEVER', 'KNOW.'],
-  ['WHO\'S', 'LAUGHING', 'NOW?', 'AHAH']
+  ['AHAH', 'WHO\'S', 'LAUGHING', 'NOW']
 ];
 
 const HATER_KISSES_ROUND2_TOKENS = [
@@ -1597,10 +1629,10 @@ function drawKissesScreenCanvas(item) {
   ctx.fillText(`@${(item.author || 'uncle-x').toUpperCase()}`, 354, 196);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 31px Tahoma, sans-serif';
-  const lines = wrapCanvasLines(ctx, `"${item.comment || ''}"`, 600, 3);
+  ctx.font = 'bold 27px Tahoma, sans-serif';
+  const lines = wrapCanvasLines(ctx, `"${item.comment || ''}"`, 610, 5);
   for (let l = 0; l < lines.length; l++) {
-    ctx.fillText(lines[l], 354, 266 + l * 44, 600);
+    ctx.fillText(lines[l], 354, 252 + l * 38, 610);
   }
 
   heroTopicTex.needsUpdate = true;
@@ -1893,7 +1925,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 24,
     endBar: 28,
-    text: '"and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI"',
+    text: '"and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI" — @britelite',
     typeSec: 5.1
   },
   {
@@ -1934,23 +1966,23 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 84,
     endBar: 88,
-    text: '"\'idea men\' could never actually do anything so they were harmless — now with AI they think they\'re creators." — @uncle-x',
-    typeSec: 5.1,
-    avatarPath: 'assets/avatars/mfx.gif'
+    text: '"demo should show your skills. here you show that you can write some prompts and download jpgs." — @yami.five',
+    typeSec: 4.0,
+    avatarPath: 'assets/avatars/painting.gif'
   },
   {
     startBar: 88,
     endBar: 92,
-    text: '"it\'s called reverse centaur. this slavish oiling of the machine, while the machine is the creator." — @4gentE',
+    text: '"it\'s called reverse centaur. this slavish oiling of the machine, while machine is the creator." — @4gentE',
     typeSec: 5.0,
     avatarPath: 'assets/avatars/yellow_arrow.gif'
   },
   {
     startBar: 92,
     endBar: 96,
-    text: `"i don't think 'lol ${BEAT_TOKENS[1].toLowerCase()} ai' demo will be shown on twitch..." — @leGend`,
-    typeSec: 5.0,
-    avatarPath: 'assets/avatars/legend_wizard2.gif'
+    text: '"why do all AI demos look like dogshit?" — @okkie',
+    typeSec: 2.4,
+    avatarPath: 'assets/avatars/davidje_pouet.gif'
   },
 
   // Part IX Breakdown & Transition Breaks (Bars 110..111, 126..127, 142..143)
@@ -4372,7 +4404,7 @@ function precompileAllShadersAndGeometries() {
     for (const item of list) {
       if (item.beatTokens && item.beatTokens.length === 4) {
         for (let h = 0; h < 4; h++) {
-          getOrCreateWordTemplate(item.beatTokens[h], h);
+          if (item.beatTokens[h]) getOrCreateWordTemplate(item.beatTokens[h], h);
         }
       }
     }

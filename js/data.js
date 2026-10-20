@@ -1284,14 +1284,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-05",
     "comment": "FYI some people had their genAI senses tingling during the compo when this was shown\u2026 especially the vocals caught some folks ears who said they sound like something you\u2019d get from suno.",
     "beatTokens": [
-      "SUNO",
-      "VOCALS",
-      "DETECTED",
-      "SLOP!"
+      "GENAI SENSES",
+      "TINGLING",
+      "SOUND LIKE",
+      "SUNO."
     ],
     "customStamp": {
-      "top": "SUNO VOCALS",
-      "sub": "DETECTED SLOP! // @UNCLE-X"
+      "top": "GENAI SENSES TINGLING",
+      "sub": "SOUND LIKE SUNO. // @UNCLE-X"
     }
   },
   {
@@ -1319,9 +1319,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "Oooohh \u201cyou are feeling things\u201d. Again, after 40 years. How sweet. Then I guess it\u2019s ok to burn the world down if it makes you \u201cfeel things\u201d. Screw you kids, screw your existance, grandpa is \u201cfeeling things\u201d again!",
     "beatTokens": [
       "GRANDPA",
-      "IS",
-      "FEELING",
-      "THINGS!"
+      "IS \"FEELING",
+      "THINGS\"",
+      "AGAIN!"
     ],
     "threadContext": [
       {
@@ -1344,8 +1344,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "GRANDPA IS",
-      "sub": "FEELING THINGS! // @4GENTE"
+      "top": "GRANDPA IS \"FEELING",
+      "sub": "THINGS\" AGAIN! // @4GENTE"
     }
   },
   {
@@ -1372,11 +1372,11 @@ export const COMMUNITY_QUOTES = [
       "DELETE",
       "THIS",
       "PROD",
-      "PLEASE!"
+      "PLEASE"
     ],
     "customStamp": {
       "top": "DELETE THIS",
-      "sub": "PROD PLEASE! // @OKKIE"
+      "sub": "PROD PLEASE // @OKKIE"
     }
   },
   {
@@ -1404,9 +1404,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "category: residue",
     "beatTokens": [
       "CATEGORY:",
-      "PURE",
-      "A.I.",
-      "RESIDUE!"
+      null,
+      "RESIDUE",
+      null
     ],
     "threadContext": [
       {
@@ -1429,8 +1429,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "CATEGORY: PURE",
-      "sub": "A.I. RESIDUE! // @FIZZER"
+      "top": "CATEGORY:",
+      "sub": "RESIDUE // @FIZZER"
     }
   },
   {
@@ -1456,12 +1456,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "CRAPPY",
       "RAIZOR",
-      "FAN",
-      "ART!"
+      "FAN ART",
+      "YOU SUCK :)"
     ],
     "customStamp": {
       "top": "CRAPPY RAIZOR",
-      "sub": "FAN ART! // @MAALI"
+      "sub": "FAN ART YOU SUCK :) // @MAALI"
     }
   },
   {
@@ -1491,7 +1491,7 @@ export const COMMUNITY_QUOTES = [
       "SIR",
       "THIS",
       "IS A",
-      "WENDY'S"
+      "WENDY"
     ],
     "threadContext": [
       {
@@ -1509,7 +1509,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "SIR THIS",
-      "sub": "IS A WENDY'S // @KANEEL"
+      "sub": "IS A WENDY // @KANEEL"
     }
   },
   {
@@ -1533,14 +1533,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-13",
     "comment": "I thought it looked like utter shit and the scroller revealed the reason why.",
     "beatTokens": [
-      "UTTER",
-      "TRASH:",
-      "AI",
-      "SCROLLER"
+      "UTTER SHIT",
+      "THE SCROLLER",
+      "REVEALED",
+      "THE REASON"
     ],
     "customStamp": {
-      "top": "UTTER TRASH:",
-      "sub": "AI SCROLLER // @PREACHER"
+      "top": "UTTER SHIT THE SCROLLER",
+      "sub": "REVEALED THE REASON // @PREACHER"
     }
   },
   {
@@ -1566,12 +1566,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "LOW",
       "QUALITY",
-      "SLOP",
-      "BAIT!"
+      "B8",
+      null
     ],
     "customStamp": {
       "top": "LOW QUALITY",
-      "sub": "SLOP BAIT! // @NR4"
+      "sub": "B8 // @NR4"
     }
   },
   {
@@ -1595,14 +1595,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "I don't think using AI is the main problem here. The guy didn't just release yet another piece of AI slop. He put \u201cRAZOR 1911 present\u201d on it, even though he has absolutely nothing to do with RAZOR 1911. You'd get punched in the face for that in polite society.",
     "beatTokens": [
-      "FAKE",
-      "RAZOR",
-      "1911",
-      "SLOP!"
+      "RAZOR 1911",
+      "PRESENT",
+      "PUNCHED IN",
+      "THE FACE"
     ],
     "customStamp": {
-      "top": "FAKE RAZOR",
-      "sub": "1911 SLOP! // @BITL"
+      "top": "RAZOR 1911 PRESENT",
+      "sub": "PUNCHED IN THE FACE // @BITL"
     }
   },
   {
@@ -1629,10 +1629,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-10",
     "comment": "Because you attempted to evade previously imposed restrictions. Which you are obviously attempting again now. So clearly you cannot handle the privileges other users of this site enjoy and appreciate. Please be so kind to move along now.",
     "beatTokens": [
-      "BAN",
-      "EVASION",
-      "DETECTED:",
-      "GOODBYE!"
+      "EVADE",
+      "RESTRICTIONS",
+      "MOVE",
+      "ALONG NOW"
     ],
     "threadContext": [
       {
@@ -1655,8 +1655,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "BAN EVASION",
-      "sub": "DETECTED: GOODBYE! // @HAVOC"
+      "top": "EVADE RESTRICTIONS",
+      "sub": "MOVE ALONG NOW // @HAVOC"
     }
   },
   {
@@ -1680,13 +1680,13 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-08",
     "comment": "grok? more like glop!!",
     "beatTokens": [
-      "GROK?!",
+      "GROK?",
       "MORE",
       "LIKE",
       "GLOP!!"
     ],
     "customStamp": {
-      "top": "GROK?! MORE",
+      "top": "GROK? MORE",
       "sub": "LIKE GLOP!! // @JENA"
     }
   },
@@ -1714,10 +1714,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-08",
     "comment": "It's telling that you call it a slave. It is very telling. now fuck off.",
     "beatTokens": [
+      "VERY",
+      "TELLING.",
       "NOW",
-      "FUCK",
-      "OFF",
-      "SLOP!"
+      "FUCK OFF."
     ],
     "threadContext": [
       {
@@ -1740,8 +1740,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "NOW FUCK",
-      "sub": "OFF SLOP! // @UNCLE-X"
+      "top": "VERY TELLING.",
+      "sub": "NOW FUCK OFF. // @UNCLE-X"
     }
   },
   {
@@ -1768,10 +1768,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-08",
     "comment": "You forgot to write \u201cI am very intelligent\u201d at the bottom.",
     "beatTokens": [
-      "I AM",
+      "\"I AM",
       "VERY",
       "INTEL-",
-      "LIGENT!"
+      "LIGENT\""
     ],
     "threadContext": [
       {
@@ -1794,8 +1794,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "I AM VERY",
-      "sub": "INTEL- LIGENT! // @4GENTE"
+      "top": "\"I AM VERY",
+      "sub": "INTEL- LIGENT\" // @4GENTE"
     }
   },
   {
@@ -1820,13 +1820,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "Nice double quote! Is pouet vibecoded too now mayhaps??? (I kid, i kid)",
     "beatTokens": [
       "IS POUET",
-      "VIBE-",
-      "CODED",
-      "TOO NOW?"
+      "VIBECODED",
+      "TOO NOW",
+      "MAYHAPS???"
     ],
     "customStamp": {
-      "top": "IS POUET VIBE-",
-      "sub": "CODED TOO NOW? // @OKKIE"
+      "top": "IS POUET VIBECODED",
+      "sub": "TOO NOW MAYHAPS??? // @OKKIE"
     }
   },
   {
@@ -1853,10 +1853,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "Bitter taste? This is like eating a big plate of orange peels.",
     "beatTokens": [
-      "BIG",
-      "PLATE OF",
-      "ORANGE",
-      "PEELS!"
+      "BITTER TASTE?",
+      "BIG PLATE",
+      "OF ORANGE",
+      "PEELS"
     ],
     "threadContext": [
       {
@@ -1879,8 +1879,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "BIG PLATE OF",
-      "sub": "ORANGE PEELS! // @FIZZER"
+      "top": "BITTER TASTE? BIG PLATE",
+      "sub": "OF ORANGE PEELS // @FIZZER"
     }
   },
   {
@@ -1910,7 +1910,7 @@ export const COMMUNITY_QUOTES = [
       "TOO LAZY",
       "TO WRITE",
       "A YAML",
-      "PARSER!"
+      "PARSER"
     ],
     "threadContext": [
       {
@@ -1934,7 +1934,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "TOO LAZY TO WRITE",
-      "sub": "A YAML PARSER! // @MAALI"
+      "sub": "A YAML PARSER // @MAALI"
     }
   },
   {
@@ -1961,10 +1961,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-08",
     "comment": "I WANT POUET TO ACCEPT MY SINS",
     "beatTokens": [
+      "I WANT",
       "POUET",
-      "ACCEPT",
-      "MY",
-      "SINS!"
+      "TO ACCEPT",
+      "MY SINS"
     ],
     "threadContext": [
       {
@@ -1987,8 +1987,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "POUET ACCEPT",
-      "sub": "MY SINS! // @KANEEL"
+      "top": "I WANT POUET",
+      "sub": "TO ACCEPT MY SINS // @KANEEL"
     }
   },
   {
@@ -2017,8 +2017,8 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "WHY WOULD",
       "ANYONE",
-      "WATCH",
-      "AI SLOP?!"
+      "WANT TO",
+      "WATCH"
     ],
     "threadContext": [
       {
@@ -2042,7 +2042,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "WHY WOULD ANYONE",
-      "sub": "WATCH AI SLOP?! // @PREACHER"
+      "sub": "WANT TO WATCH // @PREACHER"
     }
   },
   {
@@ -2069,11 +2069,11 @@ export const COMMUNITY_QUOTES = [
       "PLEASE",
       "LEARN",
       "THE",
-      "CRAFT!"
+      "CRAFT"
     ],
     "customStamp": {
       "top": "PLEASE LEARN",
-      "sub": "THE CRAFT! // @NR4"
+      "sub": "THE CRAFT // @NR4"
     }
   },
   {
@@ -2097,14 +2097,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "2ham: well, once it's a joke, twice... maybe. But by the tenth time, it's not funny anymore. There have already been like fifty AI slop releases of various kinds. This isn't original anymore. At this rate, there could be joke demos every day, released under the Farbrausch, ASD, Fairlight, etc. names. We'll be laughing our asses off.",
     "beatTokens": [
-      "50TH A.I.",
-      "JOKE DEMO",
-      "IS NOT",
-      "FUNNY!"
+      "NOT FUNNY",
+      "ANYMORE",
+      "FIFTY AI",
+      "SLOP RELEASES"
     ],
     "customStamp": {
-      "top": "50TH A.I. JOKE DEMO",
-      "sub": "IS NOT FUNNY! // @BITL"
+      "top": "NOT FUNNY ANYMORE",
+      "sub": "FIFTY AI SLOP RELEASES // @BITL"
     }
   },
   {
@@ -2132,9 +2132,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "The ship has sailed for your opinions. By creating duplicate accounts and using them to post here all you achieve is underlining the lack of respect you have for this community, it's users and it's maintainers. All there is left for you to do is moving along now, whether you like it or not.",
     "beatTokens": [
       "THE SHIP",
-      "HAS",
-      "SAILED,",
-      "MOVE ON!"
+      "HAS SAILED",
+      "MOVING",
+      "ALONG NOW"
     ],
     "threadContext": [
       {
@@ -2157,8 +2157,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "THE SHIP HAS",
-      "sub": "SAILED, MOVE ON! // @HAVOC"
+      "top": "THE SHIP HAS SAILED",
+      "sub": "MOVING ALONG NOW // @HAVOC"
     }
   },
   {
@@ -2182,14 +2182,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-06",
     "comment": "I kinda cringe to be honest when all these attempts (and even outside the demoscene) they put credits Claude like it's anthropomorphised. But then if it's not Claude who really did the code? I wonder how weird it would be if a non-AI prod, credits would say \"Code: Visual Studio C++\", \"Graphics: GIMP\", \"Music: ProTracker\"",
     "beatTokens": [
-      "CREDITS:",
-      "CODE BY",
+      "CODE:",
       "VISUAL",
-      "STUDIO!"
+      "STUDIO",
+      "C++"
     ],
     "customStamp": {
-      "top": "CREDITS: CODE BY",
-      "sub": "VISUAL STUDIO! // @OPTIMUS"
+      "top": "CODE: VISUAL",
+      "sub": "STUDIO C++ // @OPTIMUS"
     }
   },
   {
@@ -2268,13 +2268,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "It\u2019s called REVERSE CENTAUR. This inversion of creativity that some shallow people mistake for actual creativity. This slavish oiling of the machine, while machine is the creator. Thanks Cory for this vivid description. Some people are professionally forced into being the reverse centaur, but to choose this for yourself as a \u201ccreative outlet\u201d is beyond mindless.",
     "beatTokens": [
       "REVERSE",
-      "CENTAUR:",
-      "OILING",
-      "MACHINES"
+      "CENTAUR",
+      "SLAVISH",
+      "OILING"
     ],
     "customStamp": {
-      "top": "REVERSE CENTAUR:",
-      "sub": "OILING MACHINES // @4GENTE"
+      "top": "REVERSE CENTAUR",
+      "sub": "SLAVISH OILING // @4GENTE"
     }
   },
   {
@@ -2301,10 +2301,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "- AI-ShutUp",
     "beatTokens": [
-      "A.I.",
-      "SHUT",
-      "THE HELL",
-      "UP!"
+      "AI-SHUTUP",
+      null,
+      null,
+      null
     ],
     "threadContext": [
       {
@@ -2327,8 +2327,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "A.I. SHUT",
-      "sub": "THE HELL UP! // @OKKIE"
+      "top": "AI-SHUTUP",
+      "sub": "// @OKKIE"
     }
   },
   {
@@ -2352,14 +2352,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-09",
     "comment": "Cringe",
     "beatTokens": [
-      "MAXIMUM",
-      "VIBE",
-      "CODED",
-      "CRINGE!"
+      "CRINGE",
+      null,
+      null,
+      null
     ],
     "customStamp": {
-      "top": "MAXIMUM VIBE",
-      "sub": "CODED CRINGE! // @FIZZER"
+      "top": "CRINGE",
+      "sub": "// @FIZZER"
     }
   },
   {
@@ -2386,10 +2386,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "you're just lazy and should be judged for it.",
     "beatTokens": [
-      "YOU ARE",
-      "LAZY:",
-      "GET",
-      "JUDGED!"
+      "YOU'RE",
+      "JUST LAZY",
+      "BE JUDGED",
+      "FOR IT"
     ],
     "threadContext": [
       {
@@ -2412,8 +2412,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "YOU ARE LAZY:",
-      "sub": "GET JUDGED! // @MAALI"
+      "top": "YOU'RE JUST LAZY",
+      "sub": "BE JUDGED FOR IT // @MAALI"
     }
   },
   {
@@ -2437,14 +2437,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "No. Maintenant tu sors merci.",
     "beatTokens": [
-      "NON.",
+      "NO.",
       "MAINTENANT",
       "TU SORS",
-      "MERCI!"
+      "MERCI"
     ],
     "customStamp": {
-      "top": "NON. MAINTENANT",
-      "sub": "TU SORS MERCI! // @KANEEL"
+      "top": "NO. MAINTENANT",
+      "sub": "TU SORS MERCI // @KANEEL"
     }
   },
   {
@@ -2471,11 +2471,11 @@ export const COMMUNITY_QUOTES = [
       "THE BOOT",
       "IS",
       "MASSIVELY",
-      "CRINGE!"
+      "CRINGE"
     ],
     "customStamp": {
       "top": "THE BOOT IS",
-      "sub": "MASSIVELY CRINGE! // @PREACHER"
+      "sub": "MASSIVELY CRINGE // @PREACHER"
     }
   },
   {
@@ -2500,13 +2500,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "yeah the vibeslop is really a saltoing pony cool this prod would have needed more skill or art and less saltos from a pony",
     "beatTokens": [
       "MORE",
-      "SKILL,",
+      "SKILL",
       "LESS",
-      "VIBESLOP"
+      "SALTOS"
     ],
     "customStamp": {
-      "top": "MORE SKILL,",
-      "sub": "LESS VIBESLOP // @NR4"
+      "top": "MORE SKILL",
+      "sub": "LESS SALTOS // @NR4"
     }
   },
   {
@@ -2533,10 +2533,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "The plasma part is buggy. AI \u200b\u200bfailed :)",
     "beatTokens": [
-      "BUGGY",
-      "PLASMA:",
-      "A.I.",
-      "FAILED!"
+      "PLASMA",
+      "IS BUGGY.",
+      "AI",
+      "FAILED :)"
     ],
     "threadContext": [
       {
@@ -2553,8 +2553,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "BUGGY PLASMA:",
-      "sub": "A.I. FAILED! // @BITL"
+      "top": "PLASMA IS BUGGY.",
+      "sub": "AI FAILED :) // @BITL"
     }
   },
   {
@@ -2581,10 +2581,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-10",
     "comment": "Temporarily blocking this thread before it gets even more polluted.",
     "beatTokens": [
+      "BLOCKING",
+      "THIS",
       "THREAD",
-      "LOCKED:",
-      "TOO MUCH",
-      "SLOP!"
+      "POLLUTED"
     ],
     "threadContext": [
       {
@@ -2607,8 +2607,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "THREAD LOCKED:",
-      "sub": "TOO MUCH SLOP! // @HAVOC"
+      "top": "BLOCKING THIS",
+      "sub": "THREAD POLLUTED // @HAVOC"
     }
   },
   {
@@ -2633,14 +2633,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-07-23",
     "comment": "behold the future of demomaking, where you need AI to beat sync something to a 4/4 techno soundtrack. what a time to be alive!",
     "beatTokens": [
-      "NEED A.I.",
-      "TO SYNC",
-      "TO 4/4",
-      "TECHNO?!"
+      "NEED AI",
+      "TO BEAT",
+      "SYNC",
+      "4/4 TECHNO"
     ],
     "customStamp": {
-      "top": "NEED A.I. TO SYNC",
-      "sub": "TO 4/4 TECHNO?! // @PSENOUGH"
+      "top": "NEED AI TO BEAT",
+      "sub": "SYNC 4/4 TECHNO // @PSENOUGH"
     }
   },
   {
@@ -2664,14 +2664,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "Says the guy who has created 3 accounts for himself just in the last 5 days\u2026",
     "beatTokens": [
-      "3 FAKE",
-      "ACCOUNTS",
-      "IN FIVE",
-      "DAYS?!"
+      "3 ACCOUNTS",
+      "FOR HIMSELF",
+      "LAST",
+      "5 DAYS"
     ],
     "customStamp": {
-      "top": "3 FAKE ACCOUNTS",
-      "sub": "IN FIVE DAYS?! // @UNCLE-X"
+      "top": "3 ACCOUNTS FOR HIMSELF",
+      "sub": "LAST 5 DAYS // @UNCLE-X"
     }
   },
   {
@@ -2695,14 +2695,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "You do realize you thumbed up EVERY AI prod ever, good or bad, hate or no hate, right?",
     "beatTokens": [
-      "THUMBED",
-      "UP",
+      "THUMBED UP",
       "EVERY",
-      "AI PROD!"
+      "AI PROD",
+      "EVER"
     ],
     "customStamp": {
-      "top": "THUMBED UP",
-      "sub": "EVERY AI PROD! // @4GENTE"
+      "top": "THUMBED UP EVERY",
+      "sub": "AI PROD EVER // @4GENTE"
     }
   },
   {
@@ -2731,8 +2731,8 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "LOAD",
       "BEARING",
-      "VIBE",
-      "TAKES!"
+      "ASSUMPTIONS",
+      "MY MAN"
     ],
     "threadContext": [
       {
@@ -2756,7 +2756,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "LOAD BEARING",
-      "sub": "VIBE TAKES! // @OKKIE"
+      "sub": "ASSUMPTIONS MY MAN // @OKKIE"
     }
   },
   {
@@ -2783,10 +2783,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "Yes, a web-based emulator would be a much better way to spend that energy if you really must spend some.",
     "beatTokens": [
-      "JUST",
-      "USE AN",
+      "WEB-BASED",
       "EMULATOR",
-      "BRO!"
+      "MUCH",
+      "BETTER"
     ],
     "threadContext": [
       {
@@ -2809,8 +2809,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "JUST USE AN",
-      "sub": "EMULATOR BRO! // @FIZZER"
+      "top": "WEB-BASED EMULATOR",
+      "sub": "MUCH BETTER // @FIZZER"
     }
   },
   {
@@ -2840,7 +2840,7 @@ export const COMMUNITY_QUOTES = [
       "UNINSPIRED",
       "UNTZ",
       "UNTZ",
-      "IMITATION"
+      "UNTZ"
     ],
     "threadContext": [
       {
@@ -2864,7 +2864,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "UNINSPIRED UNTZ",
-      "sub": "UNTZ IMITATION // @MAALI"
+      "sub": "UNTZ UNTZ // @MAALI"
     }
   },
   {
@@ -2888,14 +2888,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "Project manager in many agencies I worked for all believed they were quintessential to the projects. Since LLMs, it's obvious to me these people were effectively prompting other humans to do the work they could not do, until the moral would improve.",
     "beatTokens": [
-      "MIDDLE",
-      "MANAGERS",
       "PROMPTING",
-      "HUMANS!"
+      "OTHER HUMANS",
+      "TO DO",
+      "THE WORK"
     ],
     "customStamp": {
-      "top": "MIDDLE MANAGERS",
-      "sub": "PROMPTING HUMANS! // @KANEEL"
+      "top": "PROMPTING OTHER HUMANS",
+      "sub": "TO DO THE WORK // @KANEEL"
     }
   },
   {
@@ -2920,14 +2920,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-07-29",
     "comment": "So much coding skill. Too bad the AI art disgraces it.",
     "beatTokens": [
-      "A.I.",
-      "ART",
-      "DISGRACES",
-      "CODE!"
+      "SO MUCH",
+      "CODING SKILL",
+      "AI ART",
+      "DISGRACES IT"
     ],
     "customStamp": {
-      "top": "A.I. ART",
-      "sub": "DISGRACES CODE! // @PREACHER"
+      "top": "SO MUCH CODING SKILL",
+      "sub": "AI ART DISGRACES IT // @PREACHER"
     }
   },
   {
@@ -2954,10 +2954,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "I sometimes wonder what the goal is with these ports. Sticking it to big tech, as a political statement, ripping-and-open-sourceing their cloud-ai-subscription-bloatware, as a statement, I can kinda understand, even using a more evil big tech mechanism with an even worse subscription model. but what about the authors of these demos? why stick it to them, it does not make any sense to me",
     "beatTokens": [
-      "CLOUD AI",
-      "SUBSCRIP-",
-      "TION",
-      "SLOP!"
+      "WHY",
+      "STICK IT",
+      "TO THEM?",
+      null
     ],
     "threadContext": [
       {
@@ -2980,8 +2980,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "CLOUD AI SUBSCRIP-",
-      "sub": "TION SLOP! // @NR4"
+      "top": "WHY STICK IT",
+      "sub": "TO THEM? // @NR4"
     }
   },
   {
@@ -3008,10 +3008,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "The \"Evoid Droid\" port looks pretty broken (the scenes differ from the original in terms of color and lighting). And instead of the scene where the robot runs through the tunnel, there's just a black screen. Maybe it's just an issue with my browser? :)",
     "beatTokens": [
-      "ROBOT",
-      "TUNNEL IS",
-      "A BLACK",
-      "SCREEN!"
+      "PRETTY",
+      "BROKEN",
+      "JUST A",
+      "BLACK SCREEN"
     ],
     "threadContext": [
       {
@@ -3034,8 +3034,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "ROBOT TUNNEL IS",
-      "sub": "A BLACK SCREEN! // @BITL"
+      "top": "PRETTY BROKEN",
+      "sub": "JUST A BLACK SCREEN // @BITL"
     }
   },
   {
@@ -3061,13 +3061,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "this demo is like chugging boatloads of doping for the olympics and then ending up in 4th place, few people care either way now and noone will in a few months",
     "beatTokens": [
       "DOPING",
-      "FOR",
-      "4TH",
-      "PLACE!"
+      "FOR THE",
+      "OLYMPICS",
+      "4TH PLACE"
     ],
     "customStamp": {
-      "top": "DOPING FOR",
-      "sub": "4TH PLACE! // @HAVOC"
+      "top": "DOPING FOR THE",
+      "sub": "OLYMPICS 4TH PLACE // @HAVOC"
     }
   },
   {
@@ -3094,10 +3094,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "Bjoer is one of my fav intros ever. The AI-created JS \"port\" runs with 8fps on an i9 with 4,8 GHz and feels like a travesty of the original. Looking at the source the AI apparently built some kind of x86 interpreter that plays back the original opcodes of the intro scenes. Seriously, is this where we are now? If you want it in a browser, js-dos already does this. Who is this for? Jesus please stop dumping this slop here.",
     "beatTokens": [
-      "8 FPS ON",
-      "A 4.8GHZ",
-      "CORE i9",
-      "CPU?!"
+      "8FPS",
+      "ON AN I9",
+      "STOP DUMPING",
+      "THIS SLOP"
     ],
     "threadContext": [
       {
@@ -3120,8 +3120,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "8 FPS ON A 4.8GHZ",
-      "sub": "CORE i9 CPU?! // @NEOMAN"
+      "top": "8FPS ON AN I9",
+      "sub": "STOP DUMPING THIS SLOP // @NEOMAN"
     }
   },
   {
@@ -3149,9 +3149,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "We're not the ones getting offended on behalf of LLMs.",
     "beatTokens": [
       "OFFENDED",
-      "FOR",
-      "LLMS?",
-      "LOL!"
+      "ON BEHALF",
+      "OF",
+      "LLMS"
     ],
     "threadContext": [
       {
@@ -3174,8 +3174,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "OFFENDED FOR",
-      "sub": "LLMS? LOL! // @UNCLE-X"
+      "top": "OFFENDED ON BEHALF",
+      "sub": "OF LLMS // @UNCLE-X"
     }
   },
   {
@@ -3199,14 +3199,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-14",
     "comment": "Oh OK. Then I guess you just love pretending. Luckily it\u2019s ridiculously easy to see through. But it\u2019s kinda embarassing.",
     "beatTokens": [
-      "YOU JUST",
-      "LOVE",
+      "YOU",
+      "JUST LOVE",
       "PRETEND-",
-      "ING!"
+      "ING"
     ],
     "customStamp": {
       "top": "YOU JUST LOVE",
-      "sub": "PRETEND- ING! // @4GENTE"
+      "sub": "PRETEND- ING // @4GENTE"
     }
   },
   {
@@ -3235,8 +3235,8 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "ALL AI",
       "DEMOS",
-      "LOOK",
-      "DOGSHIT!"
+      "LOOK LIKE",
+      "DOGSHIT"
     ],
     "threadContext": [
       {
@@ -3260,7 +3260,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "ALL AI DEMOS",
-      "sub": "LOOK DOGSHIT! // @OKKIE"
+      "sub": "LOOK LIKE DOGSHIT // @OKKIE"
     }
   },
   {
@@ -3284,14 +3284,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-06",
     "comment": "I think this hits the nail on the head. If you just vibecode a demo then your hobby isn't demomaking. Your hobby is talking to a chatbot.",
     "beatTokens": [
-      "HOBBY:",
-      "TALKING",
+      "YOUR HOBBY",
+      "IS TALKING",
       "TO A",
-      "CHATBOT!"
+      "CHATBOT"
     ],
     "customStamp": {
-      "top": "HOBBY: TALKING",
-      "sub": "TO A CHATBOT! // @FIZZER"
+      "top": "YOUR HOBBY IS TALKING",
+      "sub": "TO A CHATBOT // @FIZZER"
     }
   },
   {
@@ -3315,14 +3315,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "i used an AI upscaler for okkie's picture, you're welcome!",
     "beatTokens": [
-      "AI UP-",
-      "SCALED",
-      "OKKIE'S",
-      "AVATAR!"
+      "AI",
+      "UPSCALER",
+      "FOR OKKIE'S",
+      "PICTURE"
     ],
     "customStamp": {
-      "top": "AI UP- SCALED",
-      "sub": "OKKIE'S AVATAR! // @MAALI"
+      "top": "AI UPSCALER",
+      "sub": "FOR OKKIE'S PICTURE // @MAALI"
     }
   },
   {
@@ -3346,14 +3346,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "doing is currency and on the web, it helps with attention, which is also currency. so it's not wonder some want a bit of that currency. what's weird is spending money in order to get internet points, I guess it's F2P mentality applied to life itself.",
     "beatTokens": [
-      "PAY TO",
-      "WIN",
-      "DEMOSCENE",
-      "TOKENS!"
+      "F2P",
+      "MENTALITY",
+      "APPLIED",
+      "TO LIFE"
     ],
     "customStamp": {
-      "top": "PAY TO WIN",
-      "sub": "DEMOSCENE TOKENS! // @KANEEL"
+      "top": "F2P MENTALITY",
+      "sub": "APPLIED TO LIFE // @KANEEL"
     }
   },
   {
@@ -3378,13 +3378,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "I think this was kind of an interesting experiment and the result is exactly what kb said. It's like a vantage point to a terrible future where art or nothing of significance exists at all, while also looking passable from a quick glance.",
     "beatTokens": [
       "VANTAGE",
-      "POINT TO",
-      "BLEAK",
-      "FUTURE!"
+      "POINT",
+      "TERRIBLE",
+      "FUTURE"
     ],
     "customStamp": {
-      "top": "VANTAGE POINT TO",
-      "sub": "BLEAK FUTURE! // @PREACHER"
+      "top": "VANTAGE POINT",
+      "sub": "TERRIBLE FUTURE // @PREACHER"
     }
   },
   {
@@ -3408,14 +3408,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-02-23",
     "comment": "ressource starvation problem incoming which ressource? - skill, sadly",
     "beatTokens": [
-      "STARVED",
-      "OF",
-      "HUMAN",
-      "SKILL!"
+      "RESSOURCE",
+      "STARVATION",
+      "SKILL,",
+      "SADLY"
     ],
     "customStamp": {
-      "top": "STARVED OF",
-      "sub": "HUMAN SKILL! // @NR4"
+      "top": "RESSOURCE STARVATION",
+      "sub": "SKILL, SADLY // @NR4"
     }
   },
   {
@@ -3442,10 +3442,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-05",
     "comment": "Sorry for being so blunt, but I just can't stay silent about this :) The scene with the bouncing glenz-polyhedron is horribly broken. The bounce \u201cphysics\u201d are nothing like the original. It\u2019s like it doesn\u2019t hit the floor hard enough. Maybe I\u2019m the only one who notices this?",
     "beatTokens": [
-      "BROKEN",
       "GLENZ",
-      "BOUNCE",
-      "PHYSICS!"
+      "HORRIBLY",
+      "BROKEN",
+      "PHYSICS"
     ],
     "threadContext": [
       {
@@ -3468,8 +3468,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "BROKEN GLENZ",
-      "sub": "BOUNCE PHYSICS! // @BITL"
+      "top": "GLENZ HORRIBLY",
+      "sub": "BROKEN PHYSICS // @BITL"
     }
   },
   {
@@ -3494,13 +3494,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "my \"issue\" with this entry was that the image looks as if it would fit just fine in 4k regardless of how it was generated or converted",
     "beatTokens": [
       "WOULD FIT",
-      "IN 4K",
-      "WITHOUT",
-      "A.I.!"
+      "JUST FINE",
+      "IN",
+      "4K"
     ],
     "customStamp": {
-      "top": "WOULD FIT IN 4K",
-      "sub": "WITHOUT A.I.! // @HAVOC"
+      "top": "WOULD FIT JUST FINE",
+      "sub": "IN 4K // @HAVOC"
     }
   },
   {
@@ -3528,9 +3528,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "I don't know man. I used your engine to make demos. You know, human created computer art. Seeing you dive head first into AI just makes me sad, as you defile everything we've built over these decades. Why are you even here anymore? You don't seem to give a fuck about the human aspect in art anymore. Looking for attention? Gratification? Acceptance?",
     "beatTokens": [
       "HUMAN",
+      "CREATED",
       "COMPUTER",
-      "ART >",
-      "AI SLOP!"
+      "ART"
     ],
     "threadContext": [
       {
@@ -3553,8 +3553,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "HUMAN COMPUTER",
-      "sub": "ART > AI SLOP! // @T-101"
+      "top": "HUMAN CREATED",
+      "sub": "COMPUTER ART // @T-101"
     }
   },
   {
@@ -3580,12 +3580,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "HISTORICAL",
       "RECORD",
-      "OF",
-      "SHAME!"
+      "SUCK",
+      "DONKEY DICK"
     ],
     "customStamp": {
       "top": "HISTORICAL RECORD",
-      "sub": "OF SHAME! // @UNCLE-X"
+      "sub": "SUCK DONKEY DICK // @UNCLE-X"
     }
   },
   {
@@ -3609,14 +3609,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "So you released a false AI demo under the name of the group that is (as far as I know) adamantly against AI. If there was no mal-intent, well then there was a lot of ...how to put it nicely... dumbfuckery. Wow. You finally had your big demoscene break. Congratulations. Be sure to buy and burn more AI tokens for such noble causes, stick it to those goddamn environmentalists. No need to speak any more. Peace and Love.",
     "beatTokens": [
-      "FAKE",
-      "GROUP",
-      "NAME",
-      "HIJACK!"
+      "FALSE",
+      "AI DEMO",
+      "DUMB-",
+      "FUCKERY"
     ],
     "customStamp": {
-      "top": "FAKE GROUP",
-      "sub": "NAME HIJACK! // @4GENTE"
+      "top": "FALSE AI DEMO",
+      "sub": "DUMB- FUCKERY // @4GENTE"
     }
   },
   {
@@ -3640,14 +3640,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "You mean in the time when people where just scanning and lifting shit from art books and magazines? eh.. lol and 'i came up with the idea' is so funny to me. \"Idea men\" have been around since forever, but they could never actually do anything, so they were harmless, but now with AI they think they're hot shit too when they show off their buggy shite lmao",
     "beatTokens": [
-      "I CAME",
-      "UP WITH",
-      "THE IDEA",
-      "LMAO!"
+      "IDEA MEN",
+      "HOT SHIT",
+      "BUGGY",
+      "SHITE LMAO"
     ],
     "customStamp": {
-      "top": "I CAME UP WITH",
-      "sub": "THE IDEA LMAO! // @OKKIE"
+      "top": "IDEA MEN HOT SHIT",
+      "sub": "BUGGY SHITE LMAO // @OKKIE"
     }
   },
   {
@@ -3674,10 +3674,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "There is even already a browser version of DOSBox which could be used as a starting point. It's already used by archive.org. If there are fixes required to DOSBox to make certain DOS demos run correctly then they can be contributed back and everyone benefits. There are already in-browser Amiga emulators too. Am I stating the obvious here?",
     "beatTokens": [
-      "DOSBOX",
-      "IN THE",
       "BROWSER",
-      "EXISTS!"
+      "VERSION",
+      "OF",
+      "DOSBOX"
     ],
     "threadContext": [
       {
@@ -3700,8 +3700,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "DOSBOX IN THE",
-      "sub": "BROWSER EXISTS! // @FIZZER"
+      "top": "BROWSER VERSION",
+      "sub": "OF DOSBOX // @FIZZER"
     }
   },
   {
@@ -3728,10 +3728,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "AI enhance youtube so it doesn't noise-fuck your early 90s starfields",
     "beatTokens": [
-      "STOP",
-      "NOISE",
-      "RUINING",
-      "STARS!"
+      "AI",
+      "ENHANCE",
+      "YOUTUBE",
+      "STARFIELDS"
     ],
     "threadContext": [
       {
@@ -3754,8 +3754,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "STOP NOISE",
-      "sub": "RUINING STARS! // @MAALI"
+      "top": "AI ENHANCE",
+      "sub": "YOUTUBE STARFIELDS // @MAALI"
     }
   },
   {
@@ -3785,7 +3785,7 @@ export const COMMUNITY_QUOTES = [
       "TWO BADS",
       "DO NOT",
       "MAKE",
-      "GOOD!"
+      "ONE GOOD"
     ],
     "threadContext": [
       {
@@ -3809,7 +3809,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "TWO BADS DO NOT",
-      "sub": "MAKE GOOD! // @KANEEL"
+      "sub": "MAKE ONE GOOD // @KANEEL"
     }
   },
   {
@@ -3836,11 +3836,11 @@ export const COMMUNITY_QUOTES = [
       "NOT",
       "MADE BY",
       "HUMAN",
-      "HANDS!"
+      "HANDS"
     ],
     "customStamp": {
       "top": "NOT MADE BY",
-      "sub": "HUMAN HANDS! // @PREACHER"
+      "sub": "HUMAN HANDS // @PREACHER"
     }
   },
   {
@@ -3865,13 +3865,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "post malone: I didn't disqualify because compo rules state explicitly that playing back _a video file_ is the hard limit. I will make sure to explicitly exclude the case of playing back _multiple_ video files from a double-clickable and alt+f4able loader per rule next year, because you've got a good point with this imo.",
     "beatTokens": [
       "PLAYING",
-      "MP4 FILES",
-      "IS NOT",
-      "A DEMO!"
+      "BACK A",
+      "VIDEO FILE",
+      "HARD LIMIT"
     ],
     "customStamp": {
-      "top": "PLAYING MP4 FILES",
-      "sub": "IS NOT A DEMO! // @NR4"
+      "top": "PLAYING BACK A",
+      "sub": "VIDEO FILE HARD LIMIT // @NR4"
     }
   },
   {
@@ -3898,10 +3898,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-06",
     "comment": "Can you make a screen recording? I compared the port with the youtube capture side to side \ud83e\udd14 Sure, I made a side-by-side comparison with the original. Please check it frame by frame: http://chiptown.ru/SR_port_vs_original.mp4 I'm glad you noticed it. Yes, in the port, the polyhedron doesn't squash vertically when it hits the floor. Instead, it changes size along all axes, and the oscillation continues in the same way afterwards. So essentially, it just changes its overall size. In the original, when the polyhedron hits the floor, it gets flattened (increasing in width and decreasing in height), and the subsequent oscillation follows the physics of an elastic body. You may think this isn't \u201chorribly broken\u201d and is just a minor detail. But it has a huge impact on how the whole thing looks and feels.",
     "beatTokens": [
-      "SIDE BY",
-      "SIDE:",
-      "PORT IS",
-      "BROKEN!"
+      "FRAME",
+      "BY FRAME",
+      "HUGE",
+      "IMPACT"
     ],
     "threadContext": [
       {
@@ -3924,8 +3924,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "SIDE BY SIDE:",
-      "sub": "PORT IS BROKEN! // @BITL"
+      "top": "FRAME BY FRAME",
+      "sub": "HUGE IMPACT // @BITL"
     }
   },
   {
@@ -3949,14 +3949,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-21",
     "comment": "I don't like thumbing down Amiga demos, but please stop the slop. I especially like how the octopus has three rows of suction cups on one tentacle and another tentacle with suction cups on alternating sides. At least pretend to care?",
     "beatTokens": [
-      "MUTANT",
-      "3-ROW",
-      "OCTOPUS",
-      "TENTACLE"
+      "PLEASE",
+      "STOP",
+      "THE",
+      "SLOP"
     ],
     "customStamp": {
-      "top": "MUTANT 3-ROW",
-      "sub": "OCTOPUS TENTACLE // @GRIP"
+      "top": "PLEASE STOP",
+      "sub": "THE SLOP // @GRIP"
     }
   },
   {
@@ -3983,11 +3983,11 @@ export const COMMUNITY_QUOTES = [
       "DON'T BE",
       "A",
       "MEAT",
-      "PROXY!"
+      "PROXY"
     ],
     "customStamp": {
       "top": "DON'T BE A",
-      "sub": "MEAT PROXY! // @UNCLE-X"
+      "sub": "MEAT PROXY // @UNCLE-X"
     }
   },
   {
@@ -4011,14 +4011,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-09",
     "comment": "I feel shame after trying to watch this to the end. How to describe it. Imagine if Brezhnev gave an order in 1980 that CCCP had to be on par with the US in rap music. Then they dressed up some 50 yo aparatchick that was trained in violin when he was a kid into what they thought looked like NY street style, and now he\u2019s rapping in bad english. That\u2019s the vibe. Tasteless hillbilly shit. Demoscene from Temu. And then Grok. But come to think of it, of course it\u2019s Grok, it was always gonna be Grok. You should have put Musk siegheiling instead of that awful b&w woman \u201cdancing\u201d. \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e \ud83e\udd2e",
     "beatTokens": [
-      "BREZHNEV",
-      "1980",
-      "SOVIET",
-      "RAP SLOP"
+      "DEMOSCENE",
+      "FROM TEMU",
+      "AND THEN",
+      "GROK"
     ],
     "customStamp": {
-      "top": "BREZHNEV 1980",
-      "sub": "SOVIET RAP SLOP // @4GENTE"
+      "top": "DEMOSCENE FROM TEMU",
+      "sub": "AND THEN GROK // @4GENTE"
     }
   },
   {
@@ -4043,13 +4043,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "Oh for sure, buying yourself into things when you cant do shit can be very successful, see musk for example, and this prod is surely getting the attention!!! hurk!",
     "beatTokens": [
       "BUYING",
-      "CLOUT",
-      "WITH",
-      "TOKENS!"
+      "YOURSELF",
+      "INTO",
+      "THINGS"
     ],
     "customStamp": {
-      "top": "BUYING CLOUT",
-      "sub": "WITH TOKENS! // @OKKIE"
+      "top": "BUYING YOURSELF",
+      "sub": "INTO THINGS // @OKKIE"
     }
   },
   {
@@ -4076,10 +4076,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "Why are you posting YouTube videos?",
     "beatTokens": [
-      "WHY POST",
-      "YOUTUBE",
-      "VIDEOS",
-      "HERE?!"
+      "WHY",
+      "ARE YOU",
+      "POSTING",
+      "YOUTUBE"
     ],
     "threadContext": [
       {
@@ -4102,8 +4102,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "WHY POST YOUTUBE",
-      "sub": "VIDEOS HERE?! // @FIZZER"
+      "top": "WHY ARE YOU",
+      "sub": "POSTING YOUTUBE // @FIZZER"
     }
   },
   {
@@ -4130,10 +4130,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "it's a \"look at me, i am so good at AI prompting\" exercise... the output is hardly relevant. ironically very in line with AI itself.",
     "beatTokens": [
-      "LOOK AT",
-      "MY",
-      "AI",
-      "PROMPTS!"
+      "LOOK AT ME",
+      "SO GOOD",
+      "AT AI",
+      "PROMPTING"
     ],
     "threadContext": [
       {
@@ -4156,8 +4156,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "LOOK AT MY",
-      "sub": "AI PROMPTS! // @MAALI"
+      "top": "LOOK AT ME SO GOOD",
+      "sub": "AT AI PROMPTING // @MAALI"
     }
   },
   {
@@ -4181,14 +4181,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-07",
     "comment": "I will bite. This prod would have been a good prod if it had been hand coded. Now, is it really the result of 8 hours of vibecoding? I don't know\u2026 see, why would I trust the NFO if I can't even trust the process used? Of course, my judgement is tainted by awful christian moralism, knowing mrdoob like to hang on X and retweet every basic vibecoding little bitches, I'd say he has some skin to defend since his library is enjoyed by a lot of vibecoders, he of course cannot be against livecoding, it's making him more and more important by the minutes (I'm pretty sure he's happy to give the scene some salt, the same scene that made him by the way, well done, slow clap, what a great move! ahah \"who's laughing now\") I still remember when the likes of people like doobidoob told me to learn programming and actually understanding what I was doing instead of relying on libraries, I still remember when I tried to get some help and was welcomed by a lot of youse with a \"RTFM\". I remember being impressed by you folks, I remember being inspired\u2026 ha, the naivety of a young ginger french man. Can't wait for the next one HA! ps: I won't give you the pleasure of a thumb down considering that must make you happy",
     "beatTokens": [
+      "HAND",
+      "CODED",
       "8 HOURS",
-      "OF VIBE-",
-      "CODING",
-      "SLOP?!"
+      "VIBECODING?"
     ],
     "customStamp": {
-      "top": "8 HOURS OF VIBE-",
-      "sub": "CODING SLOP?! // @KANEEL"
+      "top": "HAND CODED",
+      "sub": "8 HOURS VIBECODING? // @KANEEL"
     }
   },
   {
@@ -4215,10 +4215,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-23",
     "comment": "Watching these web ports is like watching your childhood favorite show and realizing that they're just shit (not the demos themselves). And it would be an absolute thrill to read the original Nexus 7 source code to figure out how it works but this feels like unseasoned food or lukewarm coffee. It's weird how such amazing technology can ruin so much.",
     "beatTokens": [
-      "HOLLOW",
-      "BOOTLEG",
-      "WEB",
-      "PORTS!"
+      "UNSEASONED",
+      "FOOD",
+      "LUKEWARM",
+      "COFFEE"
     ],
     "threadContext": [
       {
@@ -4241,8 +4241,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "HOLLOW BOOTLEG",
-      "sub": "WEB PORTS! // @PREACHER"
+      "top": "UNSEASONED FOOD",
+      "sub": "LUKEWARM COFFEE // @PREACHER"
     }
   },
   {
@@ -4266,14 +4266,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-17",
     "comment": "really long text with slop justifications. There is a clear and obvious difference between auto-ripping by prompt and writing and reusing a tool in multiple prods. I also disagree with the sentiment of \"40 years ago it was real achievements\": Today's achievements are just as real, it's just vibeslopping some shit prod really isn't one.",
     "beatTokens": [
+      "REALLY",
       "LONG TEXT",
-      "WITH",
       "SLOP",
-      "EXCUSES!"
+      "JUSTIFICATIONS"
     ],
     "customStamp": {
-      "top": "LONG TEXT WITH",
-      "sub": "SLOP EXCUSES! // @NR4"
+      "top": "REALLY LONG TEXT",
+      "sub": "SLOP JUSTIFICATIONS // @NR4"
     }
   },
   {
@@ -4300,10 +4300,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-08",
     "comment": "tomkh, if you were doing anything productive, everyone would be happy",
     "beatTokens": [
-      "DO SOME-",
-      "THING",
+      "DOING",
+      "ANYTHING",
       "PRODUC-",
-      "TIVE BRO"
+      "TIVE"
     ],
     "threadContext": [
       {
@@ -4326,8 +4326,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "DO SOME- THING",
-      "sub": "PRODUC- TIVE BRO // @BITL"
+      "top": "DOING ANYTHING",
+      "sub": "PRODUC- TIVE // @BITL"
     }
   },
   {
@@ -4352,13 +4352,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "Taking a shit on my audiovisual system, disgusting... Every compo feels like praying not to get AI slop and trying to sense if it was human made or not... Especially hurts in oldschool compos where art is so important! :( Can't begin to imagine how this feels to people who've actually been passionate about oldschool and have seen the evolution of the demoscene throughout the years. And you don't fucking mention it in the slides. Should be banned or make your own AI crap party.",
     "beatTokens": [
       "PRAYING",
-      "FOR NO",
-      "COMPO",
-      "AI SLOP!"
+      "NOT TO GET",
+      "AI",
+      "SLOP"
     ],
     "customStamp": {
-      "top": "PRAYING FOR NO",
-      "sub": "COMPO AI SLOP! // @WRIGHTER"
+      "top": "PRAYING NOT TO GET",
+      "sub": "AI SLOP // @WRIGHTER"
     }
   },
   {
@@ -4385,10 +4385,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-08",
     "comment": "ah the ever-classic and so totally unique condescending AI bro angle \"oh just ignore the haters\".",
     "beatTokens": [
-      "OH JUST",
+      "\"OH JUST",
       "IGNORE",
       "THE",
-      "HATERS!"
+      "HATERS\""
     ],
     "threadContext": [
       {
@@ -4411,8 +4411,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "OH JUST IGNORE",
-      "sub": "THE HATERS! // @UNCLE-X"
+      "top": "\"OH JUST IGNORE",
+      "sub": "THE HATERS\" // @UNCLE-X"
     }
   },
   {
@@ -4436,14 +4436,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-06",
     "comment": "Wholehearted fuckings to fucking Assembly for organizing this cretin compo.",
     "beatTokens": [
+      "FUCKING",
       "ASSEMBLY",
-      "AI",
       "CRETIN",
-      "COMPO!"
+      "COMPO"
     ],
     "customStamp": {
-      "top": "ASSEMBLY AI",
-      "sub": "CRETIN COMPO! // @4GENTE"
+      "top": "FUCKING ASSEMBLY",
+      "sub": "CRETIN COMPO // @4GENTE"
     }
   },
   {
@@ -4469,12 +4469,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "TOP OF",
       "THE MONTH",
-      "BY THUMB",
-      "DOWNS?!"
+      "THUMB",
+      "DOWNS?"
     ],
     "customStamp": {
       "top": "TOP OF THE MONTH",
-      "sub": "BY THUMB DOWNS?! // @OKKIE"
+      "sub": "THUMB DOWNS? // @OKKIE"
     }
   },
   {
@@ -4504,7 +4504,7 @@ export const COMMUNITY_QUOTES = [
       "STOP",
       "POSTING",
       "SLOPPY",
-      "PORTS!"
+      "PORTS"
     ],
     "threadContext": [
       {
@@ -4528,7 +4528,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "STOP POSTING",
-      "sub": "SLOPPY PORTS! // @FIZZER"
+      "sub": "SLOPPY PORTS // @FIZZER"
     }
   },
   {
@@ -4555,11 +4555,11 @@ export const COMMUNITY_QUOTES = [
       "THOUGHTLESS",
       "BOILER-",
       "PLATE",
-      "SLOP!"
+      "DONKEY BALLS"
     ],
     "customStamp": {
       "top": "THOUGHTLESS BOILER-",
-      "sub": "PLATE SLOP! // @MAALI"
+      "sub": "PLATE DONKEY BALLS // @MAALI"
     }
   },
   {
@@ -4589,7 +4589,7 @@ export const COMMUNITY_QUOTES = [
       "SLAP",
       "YOUR",
       "STICKER",
-      "ON IT!"
+      "ON IT?"
     ],
     "threadContext": [
       {
@@ -4613,7 +4613,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "SLAP YOUR",
-      "sub": "STICKER ON IT! // @KANEEL"
+      "sub": "STICKER ON IT? // @KANEEL"
     }
   },
   {
@@ -4637,14 +4637,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-08-21",
     "comment": "Watching this felt bewildering. I am honestly not sure what I am looking at. Sure, it's a simple JS wrapper around a bunch of video clips, which disqualifies it as a demo in my book. Then again, it's like turning on a TV show in a foreign language from the middle where you have absolutely no idea what's going on or why, and that captivates you in itself.",
     "beatTokens": [
-      "SIMPLE JS",
+      "SIMPLE",
+      "JS",
       "WRAPPER",
-      "AROUND",
-      "VIDEOS!"
+      "VIDEO CLIPS"
     ],
     "customStamp": {
-      "top": "SIMPLE JS WRAPPER",
-      "sub": "AROUND VIDEOS! // @PREACHER"
+      "top": "SIMPLE JS",
+      "sub": "WRAPPER VIDEO CLIPS // @PREACHER"
     }
   },
   {
@@ -4668,14 +4668,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-23",
     "comment": "When I saw it on the stream, I didn\u2019t even stop to think whether it was AI or not. I just thought it looked kinda sloppy and clunky, like the creators didn\u2019t really put much effort into it.",
     "beatTokens": [
-      "SLOPPY,",
-      "CLUNKY,",
-      "ZERO",
-      "EFFORT!"
+      "KINDA",
+      "SLOPPY",
+      "AND",
+      "CLUNKY"
     ],
     "customStamp": {
-      "top": "SLOPPY, CLUNKY,",
-      "sub": "ZERO EFFORT! // @BITL"
+      "top": "KINDA SLOPPY",
+      "sub": "AND CLUNKY // @BITL"
     }
   },
   {
@@ -4702,10 +4702,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-24",
     "comment": "What would that question be? For me demoscene productions are about flexing skills (coding, artistic, scientific), LLMs have no place here, just like a chess computer has no place in a chess tournament, a calculator has no place in a mental calculation contest and so on. One might use those tools to aid acquiring said skills / knowledge outside the competitions but that's an entirely different process from prompting an LLM to create a prod, and even then, experience and the ability to connect and willingness to challenge concepts is what yields actual insights, skill development and eventually/potentially discoveries. Thus in my eyes LLM prods are worthless and I'd vote a \"grey screen with no music\" over a category defying LLM prod. Except for fast compos and live coding there's no way to stop people from cheating (using LLMs or other means), all we can rely on is having a code of honor.",
     "beatTokens": [
-      "USING",
-      "STOCKFISH",
-      "AT CHESS",
-      "TOURNEY!"
+      "LLMS",
+      "HAVE NO",
+      "PLACE",
+      "HERE"
     ],
     "threadContext": [
       {
@@ -4728,8 +4728,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "USING STOCKFISH",
-      "sub": "AT CHESS TOURNEY! // @LJ"
+      "top": "LLMS HAVE NO",
+      "sub": "PLACE HERE // @LJ"
     }
   },
   {
@@ -4756,10 +4756,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "I stopped reading at this point. (If you think this is an invitation to a debate, you\u2019re wrong.)",
     "beatTokens": [
-      "STOPPED",
+      "I STOPPED",
       "READING",
-      "NO",
-      "DEBATE!"
+      "AT THIS",
+      "POINT"
     ],
     "threadContext": [
       {
@@ -4782,8 +4782,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "STOPPED READING",
-      "sub": "NO DEBATE! // @UNCLE-X"
+      "top": "I STOPPED READING",
+      "sub": "AT THIS POINT // @UNCLE-X"
     }
   },
   {
@@ -4807,14 +4807,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-06",
     "comment": "Tell me you\u2019re trolling. Choppy scrolltext and buggy rasters in 2026 \u201clook good\u201d? Most people would be embarassed to release this in 1988.",
     "beatTokens": [
+      "CHOPPY",
+      "SCROLLTEXT",
       "BUGGY",
-      "1988",
-      "RASTER",
-      "CRINGE!"
+      "RASTERS"
     ],
     "customStamp": {
-      "top": "BUGGY 1988",
-      "sub": "RASTER CRINGE! // @4GENTE"
+      "top": "CHOPPY SCROLLTEXT",
+      "sub": "BUGGY RASTERS // @4GENTE"
     }
   },
   {
@@ -4841,10 +4841,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "Im not worried, I just don\u2019t understand why y\u2019all keep pushing this trash.",
     "beatTokens": [
-      "STOP",
+      "WHY",
+      "KEEP",
       "PUSHING",
-      "THIS",
-      "TRASH!"
+      "THIS TRASH"
     ],
     "threadContext": [
       {
@@ -4867,8 +4867,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "STOP PUSHING",
-      "sub": "THIS TRASH! // @OKKIE"
+      "top": "WHY KEEP",
+      "sub": "PUSHING THIS TRASH // @OKKIE"
     }
   },
   {
@@ -4895,11 +4895,11 @@ export const COMMUNITY_QUOTES = [
       "WELL,",
       "SHOULDN'T",
       "IT BE",
-      "64K?!"
+      "64K?"
     ],
     "customStamp": {
       "top": "WELL, SHOULDN'T",
-      "sub": "IT BE 64K?! // @FIZZER"
+      "sub": "IT BE 64K? // @FIZZER"
     }
   },
   {
@@ -4929,7 +4929,7 @@ export const COMMUNITY_QUOTES = [
       "EMULATORS",
       "ARE SO",
       "PRE-AI",
-      "BORING!"
+      "BOOORING!!!"
     ],
     "threadContext": [
       {
@@ -4953,7 +4953,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "EMULATORS ARE SO",
-      "sub": "PRE-AI BORING! // @MAALI"
+      "sub": "PRE-AI BOOORING!!! // @MAALI"
     }
   },
   {
@@ -4979,12 +4979,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "AESTHETIC",
       "OR LLM",
-      "MISTAKE?",
-      "HATE IT!"
+      "MISTAKES?",
+      "I HATE IT"
     ],
     "customStamp": {
       "top": "AESTHETIC OR LLM",
-      "sub": "MISTAKE? HATE IT! // @KANEEL"
+      "sub": "MISTAKES? I HATE IT // @KANEEL"
     }
   },
   {
@@ -5008,14 +5008,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-08-19",
     "comment": "I am sure that in the entirety of the demoscene there would've been an artist that would have provided you some actual art. You even acknowledge that by writing \"stolen from many artists at once. Sorry for that.\" in the infofile. Yeah, no. The tech stack may be nice from what I can tell, but it's still poison.",
     "beatTokens": [
-      "STOLEN",
-      "ART IS",
-      "STILL",
-      "POISON!"
+      "TECH STACK",
+      "MAY BE",
+      "NICE",
+      "STILL POISON"
     ],
     "customStamp": {
-      "top": "STOLEN ART IS",
-      "sub": "STILL POISON! // @PREACHER"
+      "top": "TECH STACK MAY BE",
+      "sub": "NICE STILL POISON // @PREACHER"
     }
   },
   {
@@ -5042,10 +5042,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-24",
     "comment": "And here I was wondering what uncle-x thinks of all this, because I've never heard his opinion about AI",
     "beatTokens": [
-      "WHAT DOES",
+      "WHAT",
       "UNCLE-X",
-      "THINK OF",
-      "A.I.?!"
+      "THINKS",
+      "OF AI"
     ],
     "threadContext": [
       {
@@ -5068,8 +5068,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "WHAT DOES UNCLE-X",
-      "sub": "THINK OF A.I.?! // @BRITELITE"
+      "top": "WHAT UNCLE-X",
+      "sub": "THINKS OF AI // @BRITELITE"
     }
   },
   {
@@ -5096,10 +5096,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "What the shit is that list of vomit supposed to be? Like compos at an AI party or what? Did you ask fuckin\u2019 grok to come up with that?",
     "beatTokens": [
-      "WHAT IS",
-      "THIS",
-      "VOMIT",
-      "LIST?!"
+      "LIST",
+      "OF VOMIT",
+      "FUCKIN'",
+      "GROK?"
     ],
     "threadContext": [
       {
@@ -5122,8 +5122,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "WHAT IS THIS",
-      "sub": "VOMIT LIST?! // @UNCLE-X"
+      "top": "LIST OF VOMIT",
+      "sub": "FUCKIN' GROK? // @UNCLE-X"
     }
   },
   {
@@ -5147,14 +5147,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-07",
     "comment": "Well, the \"AI washing\" is already a thing in the big outside. People lying they used AI for some task in order to please the management. That's the idiot world we live in, an there are some cretins among the plebs celebrating it.",
     "beatTokens": [
-      "CORPORATE",
-      "A.I.",
-      "WASHING",
-      "CRETINS!"
+      "\"AI",
+      "WASHING\"",
+      "IDIOT",
+      "WORLD"
     ],
     "customStamp": {
-      "top": "CORPORATE A.I.",
-      "sub": "WASHING CRETINS! // @4GENTE"
+      "top": "\"AI WASHING\"",
+      "sub": "IDIOT WORLD // @4GENTE"
     }
   },
   {
@@ -5178,14 +5178,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "They are literally the worst people",
     "beatTokens": [
-      "IDEA",
-      "GUYS:",
+      "LITERALLY",
+      "THE",
       "WORST",
-      "PEOPLE!"
+      "PEOPLE"
     ],
     "customStamp": {
-      "top": "IDEA GUYS:",
-      "sub": "WORST PEOPLE! // @OKKIE"
+      "top": "LITERALLY THE",
+      "sub": "WORST PEOPLE // @OKKIE"
     }
   },
   {
@@ -5211,12 +5211,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "REMAKE IT",
       "IN 64K",
-      "OR WHAT'S",
-      "THE POINT"
+      "WHAT'S",
+      "THE POINT?"
     ],
     "customStamp": {
       "top": "REMAKE IT IN 64K",
-      "sub": "OR WHAT'S THE POINT // @FIZZER"
+      "sub": "WHAT'S THE POINT? // @FIZZER"
     }
   },
   {
@@ -5246,7 +5246,7 @@ export const COMMUNITY_QUOTES = [
       "CANNOT",
       "TAKE",
       "OMARCHY",
-      "SERIOUS!"
+      "SERIOUS"
     ],
     "threadContext": [
       {
@@ -5270,7 +5270,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "CANNOT TAKE",
-      "sub": "OMARCHY SERIOUS! // @MAALI"
+      "sub": "OMARCHY SERIOUS // @MAALI"
     }
   },
   {
@@ -5297,11 +5297,11 @@ export const COMMUNITY_QUOTES = [
       "COUNT",
       "ME",
       "OUT",
-      "TPOLM!"
+      "YOU FUCKS"
     ],
     "customStamp": {
       "top": "COUNT ME",
-      "sub": "OUT TPOLM! // @KANEEL"
+      "sub": "OUT YOU FUCKS // @KANEEL"
     }
   },
   {
@@ -5325,14 +5325,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-04-02",
     "comment": "I don't care if the art was pixeled by Frank Miller himself, looking at the decompressor code on github would be more interesting than the entry.",
     "beatTokens": [
-      "GITHUB",
-      "CODE >",
-      "YOUR A.I.",
-      "DEMO!"
+      "DECOMPRESSOR",
+      "CODE",
+      "MORE",
+      "INTERESTING"
     ],
     "customStamp": {
-      "top": "GITHUB CODE >",
-      "sub": "YOUR A.I. DEMO! // @PREACHER"
+      "top": "DECOMPRESSOR CODE",
+      "sub": "MORE INTERESTING // @PREACHER"
     }
   },
   {
@@ -5360,9 +5360,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "Waiting for a demo called \u201eLol fuck AI\u201c. ;o)",
     "beatTokens": [
       "WAITING",
-      "FOR DEMO:",
-      "LOL FUCK",
-      "A.I. ;O)"
+      "FOR A DEMO",
+      "\"LOL",
+      "FUCK AI\""
     ],
     "threadContext": [
       {
@@ -5385,8 +5385,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "WAITING FOR DEMO:",
-      "sub": "LOL FUCK A.I. ;O) // @GASPODE"
+      "top": "WAITING FOR A DEMO",
+      "sub": "\"LOL FUCK AI\" // @GASPODE"
     }
   },
   {
@@ -5413,11 +5413,11 @@ export const COMMUNITY_QUOTES = [
       "DESERVES",
       "ALL",
       "THE",
-      "HATE!"
+      "HATE"
     ],
     "customStamp": {
       "top": "DESERVES ALL",
-      "sub": "THE HATE! // @UNCLE-X"
+      "sub": "THE HATE // @UNCLE-X"
     }
   },
   {
@@ -5444,11 +5444,11 @@ export const COMMUNITY_QUOTES = [
       "LAUGHED",
       "OUT OF",
       "THE",
-      "ROOM!"
+      "ROOM"
     ],
     "customStamp": {
       "top": "LAUGHED OUT OF",
-      "sub": "THE ROOM! // @4GENTE"
+      "sub": "THE ROOM // @4GENTE"
     }
   },
   {
@@ -5472,14 +5472,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "\u201cProper ai prod\u201d is an oxymoron",
     "beatTokens": [
-      "PROPER",
-      "AI PROD?",
-      "OXY-",
-      "MORON!"
+      "\"PROPER",
+      "AI PROD\"",
+      "IS AN",
+      "OXYMORON"
     ],
     "customStamp": {
-      "top": "PROPER AI PROD?",
-      "sub": "OXY- MORON! // @OKKIE"
+      "top": "\"PROPER AI PROD\"",
+      "sub": "IS AN OXYMORON // @OKKIE"
     }
   },
   {
@@ -5506,10 +5506,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-15",
     "comment": "That's because it shouldn't be credited as if it were a pou\u00ebt user, and we shouldn't be creating fake accounts to represent commercial tools.",
     "beatTokens": [
-      "NO FAKE",
-      "CHATBOT",
-      "POUET",
-      "ACCOUNTS"
+      "FAKE",
+      "ACCOUNTS",
+      "COMMERCIAL",
+      "TOOLS"
     ],
     "threadContext": [
       {
@@ -5532,8 +5532,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "NO FAKE CHATBOT",
-      "sub": "POUET ACCOUNTS // @FIZZER"
+      "top": "FAKE ACCOUNTS",
+      "sub": "COMMERCIAL TOOLS // @FIZZER"
     }
   },
   {
@@ -5558,14 +5558,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-07-27",
     "comment": "just be glad that Joker doesn't look like Mechahitler",
     "beatTokens": [
-      "AT LEAST",
-      "NOT",
-      "MECHA-",
-      "HITLER!"
+      "JOKER",
+      "DOESN'T",
+      "LOOK LIKE",
+      "MECHAHITLER"
     ],
     "customStamp": {
-      "top": "AT LEAST NOT",
-      "sub": "MECHA- HITLER! // @MAALI"
+      "top": "JOKER DOESN'T",
+      "sub": "LOOK LIKE MECHAHITLER // @MAALI"
     }
   },
   {
@@ -5592,10 +5592,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-15",
     "comment": "I assume some use their company tokens for their projects and some others are on claude oss program, which makes you wonder: are you even real if you throw your money? On about the usefulness for porting demos. Not sure. It\u2019s certainly useful to use to generate salt and also some likes on X.",
     "beatTokens": [
-      "TOKEN",
-      "MONEY",
-      "FOR X",
-      "LIKES!"
+      "GENERATE",
+      "SALT",
+      "LIKES",
+      "ON X"
     ],
     "threadContext": [
       {
@@ -5618,8 +5618,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "TOKEN MONEY",
-      "sub": "FOR X LIKES! // @KANEEL"
+      "top": "GENERATE SALT",
+      "sub": "LIKES ON X // @KANEEL"
     }
   },
   {
@@ -5646,10 +5646,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-24",
     "comment": "I don't think \"Lol fuck ai\" demo will be shown on twitch...",
     "beatTokens": [
-      "WON'T BE",
-      "SHOWN ON",
-      "TWITCH",
-      "STREAM!"
+      "\"LOL",
+      "FUCK AI\"",
+      "ON",
+      "TWITCH"
     ],
     "threadContext": [
       {
@@ -5672,8 +5672,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "WON'T BE SHOWN ON",
-      "sub": "TWITCH STREAM! // @LEGEND"
+      "top": "\"LOL FUCK AI\"",
+      "sub": "ON TWITCH // @LEGEND"
     }
   },
   {
@@ -5700,10 +5700,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "\u201dAnother thing exists so your critique towards AI is moot\u201d is not the kind of sick burn you think it is\u2026",
     "beatTokens": [
-      "NOT THE",
-      "SICK",
+      "NOT",
+      "THE SICK",
       "BURN YOU",
-      "THINK!"
+      "THINK"
     ],
     "threadContext": [
       {
@@ -5727,7 +5727,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "NOT THE SICK",
-      "sub": "BURN YOU THINK! // @UNCLE-X"
+      "sub": "BURN YOU THINK // @UNCLE-X"
     }
   },
   {
@@ -5751,14 +5751,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-07",
     "comment": "So, not just any ole \"AI\", but Grok Imagine involved. \ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e\ud83e\udd2e",
     "beatTokens": [
+      "NOT JUST",
+      "ANY AI",
       "GROK",
-      "IMAGINE",
-      "VOMIT",
-      "SLOP!"
+      "IMAGINE"
     ],
     "customStamp": {
-      "top": "GROK IMAGINE",
-      "sub": "VOMIT SLOP! // @4GENTE"
+      "top": "NOT JUST ANY AI",
+      "sub": "GROK IMAGINE // @4GENTE"
     }
   },
   {
@@ -5785,10 +5785,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "Can people do takedowns on these, like on youtube when someone posts a shit capture?",
     "beatTokens": [
-      "DMCA",
-      "THESE",
-      "SLOP",
-      "PORTS!"
+      "CAN PEOPLE",
+      "DO",
+      "TAKE-",
+      "DOWNS?"
     ],
     "threadContext": [
       {
@@ -5811,8 +5811,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "DMCA THESE",
-      "sub": "SLOP PORTS! // @OKKIE"
+      "top": "CAN PEOPLE DO",
+      "sub": "TAKE- DOWNS? // @OKKIE"
     }
   },
   {
@@ -5836,14 +5836,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-02-23",
     "comment": "First you say \"why did you watch it\" and then you say \"you haven't said anything about it\".",
     "beatTokens": [
-      "WHY DID",
-      "YOU EVEN",
-      "RELEASE",
-      "IT BRO?!"
+      "\"WHY DID",
+      "YOU",
+      "WATCH",
+      "IT\""
     ],
     "customStamp": {
-      "top": "WHY DID YOU EVEN",
-      "sub": "RELEASE IT BRO?! // @FIZZER"
+      "top": "\"WHY DID YOU",
+      "sub": "WATCH IT\" // @FIZZER"
     }
   },
   {
@@ -5867,14 +5867,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-02-23",
     "comment": "you sure THIS is your commentary on modern times... not your 100s of posts in the BBS about AI?",
     "beatTokens": [
-      "100S OF",
-      "AI POSTS",
-      "ON THE",
-      "POUET BBS"
+      "100S",
+      "OF POSTS",
+      "ABOUT",
+      "AI"
     ],
     "customStamp": {
-      "top": "100S OF AI POSTS",
-      "sub": "ON THE POUET BBS // @MAALI"
+      "top": "100S OF POSTS",
+      "sub": "ABOUT AI // @MAALI"
     }
   },
   {
@@ -5898,14 +5898,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-02-24",
     "comment": "the more you fight against it, the more he comments back, which give his absolute slop of a release some attentions and he thinks he's winning. Dude does not get enough attention at his job in AI (just a wild guess\u2026); wondering if he's the one he says he is, the one that seems to be living in Berlin (lots of not-so-nice leftists there), at Google maybe? (Lots of nice people there).",
     "beatTokens": [
-      "RAGEBAIT",
-      "SLOP FOR",
-      "POUET",
-      "CLICKS!"
+      "ABSOLUTE",
+      "SLOP",
+      "THINKS",
+      "HE'S WINNING"
     ],
     "customStamp": {
-      "top": "RAGEBAIT SLOP FOR",
-      "sub": "POUET CLICKS! // @KANEEL"
+      "top": "ABSOLUTE SLOP",
+      "sub": "THINKS HE'S WINNING // @KANEEL"
     }
   },
   {
@@ -5929,14 +5929,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-08-20",
     "comment": "I don't go to demoparties to watch compilations of tiktok ads",
     "beatTokens": [
+      "DEMOPARTIES",
+      "TO WATCH",
       "TIKTOK",
-      "AD SLOP",
-      "AT DEMO-",
-      "PARTIES!"
+      "ADS"
     ],
     "customStamp": {
-      "top": "TIKTOK AD SLOP",
-      "sub": "AT DEMO- PARTIES! // @SLERPY"
+      "top": "DEMOPARTIES TO WATCH",
+      "sub": "TIKTOK ADS // @SLERPY"
     }
   },
   {
@@ -5963,10 +5963,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "And there it is folks: The Guy in the Well.",
     "beatTokens": [
+      "THE GUY",
+      "IN",
       "THE",
-      "GUY",
-      "IN THE",
-      "WELL!"
+      "WELL"
     ],
     "threadContext": [
       {
@@ -5989,8 +5989,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "THE GUY",
-      "sub": "IN THE WELL! // @UNCLE-X"
+      "top": "THE GUY IN",
+      "sub": "THE WELL // @UNCLE-X"
     }
   },
   {
@@ -6015,13 +6015,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "This has to be one of the most humorless and cringeworthy \"funny\" prods ever.",
     "beatTokens": [
       "MOST",
-      "CRINGE",
-      "PROD",
-      "EVER!"
+      "HUMORLESS",
+      "CRINGE-",
+      "WORTHY"
     ],
     "customStamp": {
-      "top": "MOST CRINGE",
-      "sub": "PROD EVER! // @4GENTE"
+      "top": "MOST HUMORLESS",
+      "sub": "CRINGE- WORTHY // @4GENTE"
     }
   },
   {
@@ -6048,10 +6048,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "Yeah, consent and copyright have never been a big deal in the AI space lol. Just take everything you want!",
     "beatTokens": [
-      "AI BROS",
-      "IGNORE",
-      "ALL",
-      "CONSENT!"
+      "JUST",
+      "TAKE",
+      "EVERYTHING",
+      "YOU WANT!"
     ],
     "threadContext": [
       {
@@ -6074,8 +6074,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "AI BROS IGNORE",
-      "sub": "ALL CONSENT! // @OKKIE"
+      "top": "JUST TAKE",
+      "sub": "EVERYTHING YOU WANT! // @OKKIE"
     }
   },
   {
@@ -6100,12 +6100,12 @@ export const COMMUNITY_QUOTES = [
     "comment": "You are the one who has written a great deal of text on the BBS about how great AI will be for the scene, so you should put your money where your mouth is.",
     "beatTokens": [
       "PUT YOUR",
-      "CODE",
+      "MONEY",
       "WHERE YOUR",
       "MOUTH IS"
     ],
     "customStamp": {
-      "top": "PUT YOUR CODE",
+      "top": "PUT YOUR MONEY",
       "sub": "WHERE YOUR MOUTH IS // @FIZZER"
     }
   },
@@ -6133,10 +6133,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-15",
     "comment": "the only credits involved are the token credits coat and doob threw at claude",
     "beatTokens": [
-      "CREDITS:",
-      "CLAUDE",
-      "API",
-      "TOKENS!"
+      "TOKEN",
+      "CREDITS",
+      "THREW AT",
+      "CLAUDE"
     ],
     "threadContext": [
       {
@@ -6159,8 +6159,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "CREDITS: CLAUDE",
-      "sub": "API TOKENS! // @MAALI"
+      "top": "TOKEN CREDITS",
+      "sub": "THREW AT CLAUDE // @MAALI"
     }
   },
   {
@@ -6189,8 +6189,8 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "AZURE",
       "PSYCHOSIS",
-      "BROWSER",
-      "PORTS!"
+      "EAT THIS",
+      "SHIT"
     ],
     "threadContext": [
       {
@@ -6214,7 +6214,7 @@ export const COMMUNITY_QUOTES = [
     ],
     "customStamp": {
       "top": "AZURE PSYCHOSIS",
-      "sub": "BROWSER PORTS! // @KANEEL"
+      "sub": "EAT THIS SHIT // @KANEEL"
     }
   },
   {
@@ -6239,13 +6239,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "It's the beginning of the end of demoscene to me. Demo should show your skills. Here you show that you can write some prompts and download jpgs.",
     "beatTokens": [
       "WRITE",
-      "PROMPTS &",
-      "DOWNLOAD",
-      "JPGS!"
+      "SOME",
+      "PROMPTS",
+      "DOWNLOAD JPGS"
     ],
     "customStamp": {
-      "top": "WRITE PROMPTS &",
-      "sub": "DOWNLOAD JPGS! // @YAMI.FIVE"
+      "top": "WRITE SOME",
+      "sub": "PROMPTS DOWNLOAD JPGS // @YAMI.FIVE"
     }
   },
   {
@@ -6269,14 +6269,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-15",
     "comment": "Did an AI write that for you? No-one gives a fuck about your excuses.",
     "beatTokens": [
-      "DID AN",
-      "A.I.",
+      "DID AN AI",
       "WRITE",
-      "THAT?!"
+      "THAT",
+      "FOR YOU?"
     ],
     "customStamp": {
-      "top": "DID AN A.I.",
-      "sub": "WRITE THAT?! // @UNCLE-X"
+      "top": "DID AN AI WRITE",
+      "sub": "THAT FOR YOU? // @UNCLE-X"
     }
   },
   {
@@ -6304,9 +6304,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "But of course it was going to be Omarchy. Totally fitting. The only thing seemingly amiss is Grok.",
     "beatTokens": [
       "OF COURSE",
-      "IT IS",
-      "OMARCHY",
-      "SLOP!"
+      "IT WAS",
+      "GOING TO BE",
+      "OMARCHY"
     ],
     "threadContext": [
       {
@@ -6329,8 +6329,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "OF COURSE IT IS",
-      "sub": "OMARCHY SLOP! // @4GENTE"
+      "top": "OF COURSE IT WAS",
+      "sub": "GOING TO BE OMARCHY // @4GENTE"
     }
   },
   {
@@ -6357,10 +6357,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "yeah, but this would also require actual work, so it's easier to just let AI shit out bad ports lol.",
     "beatTokens": [
-      "AI",
-      "SPITTING",
+      "LET AI",
+      "SHIT OUT",
       "BAD",
-      "PORTS!"
+      "PORTS"
     ],
     "threadContext": [
       {
@@ -6383,8 +6383,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "AI SPITTING",
-      "sub": "BAD PORTS! // @OKKIE"
+      "top": "LET AI SHIT OUT",
+      "sub": "BAD PORTS // @OKKIE"
     }
   },
   {
@@ -6411,10 +6411,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-07",
     "comment": "\"Yes, you're absolutely right!\"",
     "beatTokens": [
-      "YES,",
+      "\"YES,",
       "YOU'RE",
       "ABSOLUTELY",
-      "RIGHT!"
+      "RIGHT!\""
     ],
     "threadContext": [
       {
@@ -6437,8 +6437,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "YES, YOU'RE",
-      "sub": "ABSOLUTELY RIGHT! // @FIZZER"
+      "top": "\"YES, YOU'RE",
+      "sub": "ABSOLUTELY RIGHT!\" // @FIZZER"
     }
   },
   {
@@ -6465,10 +6465,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-19",
     "comment": "coat <3 the first 20 seconds of the factory scene is a slideshow though, i assume it's a mix of 'it's precalcing the music for part two'???? and my old pc? :P",
     "beatTokens": [
-      "20 SECOND",
-      "SLIDE-",
-      "SHOW",
-      "PORT!"
+      "FIRST 20",
+      "SECONDS",
+      "A SLIDE-",
+      "SHOW"
     ],
     "threadContext": [
       {
@@ -6485,8 +6485,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "20 SECOND SLIDE-",
-      "sub": "SHOW PORT! // @MAALI"
+      "top": "FIRST 20 SECONDS",
+      "sub": "A SLIDE- SHOW // @MAALI"
     }
   },
   {
@@ -6513,10 +6513,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-24",
     "comment": "Not what I said either! But it sounded like usage of LLMs is akin to using \"samples and presets\" and that is absolutely not the same on so many different levels.",
     "beatTokens": [
-      "LLMS ARE",
-      "NOT",
+      "SAMPLES",
+      "AND",
       "PRESETS",
-      "BRO!"
+      "NOT THE SAME"
     ],
     "threadContext": [
       {
@@ -6539,8 +6539,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "LLMS ARE NOT",
-      "sub": "PRESETS BRO! // @KANEEL"
+      "top": "SAMPLES AND",
+      "sub": "PRESETS NOT THE SAME // @KANEEL"
     }
   },
   {
@@ -6564,14 +6564,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-04-06",
     "comment": "AI art is theft. Telling me that \"300-400 prompts were used\" isn't impressive. To me it just sounds like you're saying \"I robbed 30-40 banks.\" Yeah, okay, so you did. But that's a horrible thing to do, and a horrible thing to brag about. If this is the future of the demoscene, I guess it's been a good run, but we'll have to say goodbye.",
     "beatTokens": [
-      "300",
-      "PROMPTS =",
-      "ROBBING",
-      "30 BANKS"
+      "AI ART",
+      "IS THEFT",
+      "ROBBED",
+      "30-40 BANKS"
     ],
     "customStamp": {
-      "top": "300 PROMPTS =",
-      "sub": "ROBBING 30 BANKS // @ARKHOLT"
+      "top": "AI ART IS THEFT",
+      "sub": "ROBBED 30-40 BANKS // @ARKHOLT"
     }
   },
   {
@@ -6598,10 +6598,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "Ahh honest disclosure.. an activity that LLM bros are famous for. Just like consent.",
     "beatTokens": [
-      "LLM",
-      "BROS",
-      "HATE",
-      "CONSENT!"
+      "HONEST",
+      "DISCLOSURE",
+      "JUST LIKE",
+      "CONSENT"
     ],
     "threadContext": [
       {
@@ -6624,8 +6624,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "LLM BROS",
-      "sub": "HATE CONSENT! // @UNCLE-X"
+      "top": "HONEST DISCLOSURE",
+      "sub": "JUST LIKE CONSENT // @UNCLE-X"
     }
   },
   {
@@ -6652,10 +6652,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-23",
     "comment": "Indeed, local smalltown band should play the international hits on a restaurant terrace for retirees even in the smallest of villages because the authors just can't make it there in person.",
     "beatTokens": [
-      "RETIREE",
-      "TERRACE",
-      "COVER",
-      "BAND!"
+      "LOCAL",
+      "SMALLTOWN",
+      "BAND",
+      "FOR RETIREES"
     ],
     "threadContext": [
       {
@@ -6678,8 +6678,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "RETIREE TERRACE",
-      "sub": "COVER BAND! // @4GENTE"
+      "top": "LOCAL SMALLTOWN",
+      "sub": "BAND FOR RETIREES // @4GENTE"
     }
   },
   {
@@ -6703,14 +6703,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-04-07",
     "comment": "It isn\u2019t the Amiga compo without some slop!",
     "beatTokens": [
-      "AMIGA",
+      "ISN'T",
+      "THE AMIGA",
       "COMPO",
-      "WITHOUT",
-      "SLOP?!"
+      "WITHOUT SLOP!"
     ],
     "customStamp": {
-      "top": "AMIGA COMPO",
-      "sub": "WITHOUT SLOP?! // @OKKIE"
+      "top": "ISN'T THE AMIGA",
+      "sub": "COMPO WITHOUT SLOP! // @OKKIE"
     }
   },
   {
@@ -6734,14 +6734,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-21",
     "comment": "Slop.",
     "beatTokens": [
-      "PURE",
-      "UNFILTERED",
-      "A.I.",
-      "SLOP."
+      "SLOP.",
+      null,
+      null,
+      null
     ],
     "customStamp": {
-      "top": "PURE UNFILTERED",
-      "sub": "A.I. SLOP. // @FIZZER"
+      "top": "SLOP.",
+      "sub": "// @FIZZER"
     }
   },
   {
@@ -6765,14 +6765,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-02-24",
     "comment": "what evilpaul said... this was the 'let's sacrifice the wild compo so we can avoid (or easier justify disqualification) AI in all the other ones'-compo.",
     "beatTokens": [
+      "SACRIFICE",
+      "THE",
       "WILD",
-      "COMPO",
-      "SACRI-",
-      "FICED!"
+      "COMPO"
     ],
     "customStamp": {
-      "top": "WILD COMPO",
-      "sub": "SACRI- FICED! // @MAALI"
+      "top": "SACRIFICE THE",
+      "sub": "WILD COMPO // @MAALI"
     }
   },
   {
@@ -6799,10 +6799,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-24",
     "comment": "this looks legit, I can tell by the pixels",
     "beatTokens": [
-      "LEGIT:",
-      "I CAN",
-      "TELL BY",
-      "PIXELS!"
+      "LOOKS",
+      "LEGIT",
+      "BY THE",
+      "PIXELS"
     ],
     "threadContext": [
       {
@@ -6825,8 +6825,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "LEGIT: I CAN",
-      "sub": "TELL BY PIXELS! // @KANEEL"
+      "top": "LOOKS LEGIT",
+      "sub": "BY THE PIXELS // @KANEEL"
     }
   },
   {
@@ -6853,10 +6853,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-14",
     "comment": "Bro dude that was a sick burn bro! U show \u2019em bro! Oh, wait\u2026 i just had some chili for lunch. Nevermind.",
     "beatTokens": [
-      "JUST HAD",
-      "CHILI",
-      "FOR",
-      "LUNCH!"
+      "SICK",
+      "BURN",
+      "BRO!",
+      "CHILI"
     ],
     "threadContext": [
       {
@@ -6879,8 +6879,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "JUST HAD CHILI",
-      "sub": "FOR LUNCH! // @UNCLE-X"
+      "top": "SICK BURN",
+      "sub": "BRO! CHILI // @UNCLE-X"
     }
   },
   {
@@ -6905,13 +6905,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "\"The demoscene dies when no one has the guts to release anything.\" No. The demoscene dies when slop drowns out handcraft. AI agents releasing slop to feed and train other AI agents is nothing.",
     "beatTokens": [
       "SLOP",
-      "DROWNS",
-      "OUT",
-      "CRAFT!"
+      "DROWNS OUT",
+      "HAND-",
+      "CRAFT"
     ],
     "customStamp": {
-      "top": "SLOP DROWNS",
-      "sub": "OUT CRAFT! // @4GENTE"
+      "top": "SLOP DROWNS OUT",
+      "sub": "HAND- CRAFT // @4GENTE"
     }
   },
   {
@@ -6938,10 +6938,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-15",
     "comment": "it;s the divide of the people that like spending money on Claude to see how these things work and the people that spend money on Claude to just generate garbo generative nonsense. I despise \"AI\" in p much all versions, but I can see where Coat en Doob are coming from, and it's different than the amiga slop we've seen over the past few years in compos. I like that this stuff is now running online, it's the same demos as before, just done with less craft and more help. The credits on demozoo are absolute nonsense tho, this doesn't deserve any 'credit' in that aspect.",
     "beatTokens": [
-      "SPENDING",
-      "CASH ON",
-      "CLAUDE",
-      "GARBO!"
+      "GARBO",
+      "GENERATIVE",
+      "NONSENSE",
+      null
     ],
     "threadContext": [
       {
@@ -6964,8 +6964,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "SPENDING CASH ON",
-      "sub": "CLAUDE GARBO! // @OKKIE"
+      "top": "GARBO GENERATIVE",
+      "sub": "NONSENSE // @OKKIE"
     }
   },
   {
@@ -6989,14 +6989,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-08-30",
     "comment": "I think that you shouldn't have been so surprised about getting a negative reaction to using AI (and the subject matter) in the demoscene by now. Anyway, some thoughts and questions: At first I thought this was on an oldschool platform. Is the whole decoding process contained in the executable, and could it be rewritten for Amiga etc.? From just looking at the image with my eyes it seems like it has a lot of regions of solid background colour, which I imagine compress pretty well. The picture itself hides this pretty well. Did you pre-process the image \"manually\"? Regarding the use of AI, it was pointed out by Preacher that you could have asked an artist to draw it for you - this wouldn't have been feasible if you were somehow searching through a large space of generated images to optimise for compressibility. Were you doing something similar?",
     "beatTokens": [
-      "SHOCKED",
-      "BY A.I.",
-      "HATE",
-      "IN 2026?"
+      "NEGATIVE",
+      "REACTION",
+      "TO USING",
+      "AI"
     ],
     "customStamp": {
-      "top": "SHOCKED BY A.I.",
-      "sub": "HATE IN 2026? // @FIZZER"
+      "top": "NEGATIVE REACTION",
+      "sub": "TO USING AI // @FIZZER"
     }
   },
   {
@@ -7021,13 +7021,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "yes, at least add 'NEVER EVER EVER EVER USE EMDASHES!!!' to chatgpt's additional instructions",
     "beatTokens": [
       "NEVER",
-      "USE",
-      "EM-",
-      "DASHES!"
+      "EVER EVER",
+      "EVER USE",
+      "EMDASHES!!!"
     ],
     "customStamp": {
-      "top": "NEVER USE",
-      "sub": "EM- DASHES! // @MAALI"
+      "top": "NEVER EVER EVER",
+      "sub": "EVER USE EMDASHES!!! // @MAALI"
     }
   },
   {
@@ -7055,9 +7055,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "once released into the wilderness of the Internet, the data will have to learn how to fend for itself else it is at risk to be collected by data hunters and scavengers.",
     "beatTokens": [
       "DATA",
-      "SCAVENGER",
-      "TRAINING",
-      "WEIGHTS!"
+      "HUNTERS",
+      "AND",
+      "SCAVENGERS"
     ],
     "threadContext": [
       {
@@ -7080,8 +7080,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "DATA SCAVENGER",
-      "sub": "TRAINING WEIGHTS! // @KANEEL"
+      "top": "DATA HUNTERS",
+      "sub": "AND SCAVENGERS // @KANEEL"
     }
   },
   {
@@ -7106,13 +7106,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "Idea Guys(tm) are very much into genAI because it means they don\u2019t need to split 50/50 anymore. Instead they can use the other 50 on tokens now.",
     "beatTokens": [
       "IDEA",
-      "GUYS",
-      "BUYING",
-      "TOKENS!"
+      "GUYS(TM)",
+      "50 ON",
+      "TOKENS"
     ],
     "customStamp": {
-      "top": "IDEA GUYS",
-      "sub": "BUYING TOKENS! // @UNCLE-X"
+      "top": "IDEA GUYS(TM)",
+      "sub": "50 ON TOKENS // @UNCLE-X"
     }
   },
   {
@@ -7137,13 +7137,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "Look, if stupid AI puts suction cups ON TOP of a tentacle, and the artist doesn't even care enough to fix that, that's not dedication, that's not the demoscene spirit, that's selling the audience short. That's slop. So much for the \"artistry\". All you have to do is look at the screenshot on top. Not hard at all. Although, as I discover again and again, you just can't sell some of the audience short enough. And that's perfectly OK, I just don't understand why these short guys want us all to walk on our knees pretending to be short (and blind) too.",
     "beatTokens": [
       "SUCTION",
-      "CUPS ON",
-      "TOP OF",
+      "CUPS ON TOP",
+      "OF A",
       "TENTACLE"
     ],
     "customStamp": {
-      "top": "SUCTION CUPS ON",
-      "sub": "TOP OF TENTACLE // @4GENTE"
+      "top": "SUCTION CUPS ON TOP",
+      "sub": "OF A TENTACLE // @4GENTE"
     }
   },
   {
@@ -7170,10 +7170,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-15",
     "comment": "What port work? If you want to credit it properly, credit Claude.",
     "beatTokens": [
-      "DON'T",
       "CREDIT",
-      "HUMANS:",
-      "CLAUDE!"
+      "IT",
+      "PROPERLY",
+      "CREDIT CLAUDE"
     ],
     "threadContext": [
       {
@@ -7196,8 +7196,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "DON'T CREDIT",
-      "sub": "HUMANS: CLAUDE! // @OKKIE"
+      "top": "CREDIT IT",
+      "sub": "PROPERLY CREDIT CLAUDE // @OKKIE"
     }
   },
   {
@@ -7221,14 +7221,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-04-02",
     "comment": "If the compression is so good, why didn't you make a 64k intro instead?",
     "beatTokens": [
-      "WHY NOT",
+      "WHY",
+      "DIDN'T YOU",
       "MAKE A",
-      "64K INTRO",
-      "INSTEAD?"
+      "64K INTRO"
     ],
     "customStamp": {
-      "top": "WHY NOT MAKE A",
-      "sub": "64K INTRO INSTEAD? // @FIZZER"
+      "top": "WHY DIDN'T YOU",
+      "sub": "MAKE A 64K INTRO // @FIZZER"
     }
   },
   {
@@ -7255,10 +7255,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-18",
     "comment": "the only thing AI is good for... porting Potion intros \\o/",
     "beatTokens": [
-      "AI ONLY",
+      "ONLY THING",
+      "AI IS",
       "GOOD FOR",
-      "POTION",
-      "PORTS!"
+      "POTION"
     ],
     "threadContext": [
       {
@@ -7281,8 +7281,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "AI ONLY GOOD FOR",
-      "sub": "POTION PORTS! // @MAALI"
+      "top": "ONLY THING AI IS",
+      "sub": "GOOD FOR POTION // @MAALI"
     }
   },
   {
@@ -7341,9 +7341,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "Did you get permission from Ronny etc for doing this to Debris? What about the other demos on the list?",
     "beatTokens": [
       "DID YOU",
-      "ASK",
-      "RONNY",
-      "FIRST?!"
+      "GET",
+      "PERMISSION",
+      "FROM RONNY?"
     ],
     "threadContext": [
       {
@@ -7366,8 +7366,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "DID YOU ASK",
-      "sub": "RONNY FIRST?! // @UNCLE-X"
+      "top": "DID YOU GET",
+      "sub": "PERMISSION FROM RONNY? // @UNCLE-X"
     }
   },
   {
@@ -7395,9 +7395,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "\u2026yet you maniacally applaud literally every half-assed brainfart that used any sort of AI\u2026 Yeah, it\u2019s all those evil \u201cbiocentric haters\u201d. Luckily we have champions of free speech like you, Tomkh, Elon Musk, etc.",
     "beatTokens": [
       "EVIL",
-      "BIO-",
-      "CENTRIC",
-      "HATERS!"
+      "\"BIOCENTRIC",
+      "HATERS\"",
+      null
     ],
     "threadContext": [
       {
@@ -7420,8 +7420,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "EVIL BIO-",
-      "sub": "CENTRIC HATERS! // @4GENTE"
+      "top": "EVIL \"BIOCENTRIC",
+      "sub": "HATERS\" // @4GENTE"
     }
   },
   {
@@ -7448,10 +7448,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-15",
     "comment": "Yeah, this is closer to making a capture for YouTube than coding a demo. We don\u2019t credit people for making YouTube captures either. Don\u2019t think for a second a human coded anything for these.",
     "beatTokens": [
-      "JUST A",
-      "YOUTUBE",
-      "CAPTURE",
-      "CLONE!"
+      "CLOSER TO",
+      "A CAPTURE",
+      "FOR",
+      "YOUTUBE"
     ],
     "threadContext": [
       {
@@ -7474,8 +7474,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "JUST A YOUTUBE",
-      "sub": "CAPTURE CLONE! // @OKKIE"
+      "top": "CLOSER TO A CAPTURE",
+      "sub": "FOR YOUTUBE // @OKKIE"
     }
   },
   {
@@ -7499,14 +7499,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-04-02",
     "comment": "Yeah, if the story was the point then it was too boring.",
     "beatTokens": [
-      "STORY",
+      "THE STORY",
       "WAS",
-      "WAY TOO",
-      "BORING!"
+      "TOO",
+      "BORING"
     ],
     "customStamp": {
-      "top": "STORY WAS",
-      "sub": "WAY TOO BORING! // @FIZZER"
+      "top": "THE STORY WAS",
+      "sub": "TOO BORING // @FIZZER"
     }
   },
   {
@@ -7530,14 +7530,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-21",
     "comment": "dunno what's worse... the bucketloads of AI artwork or the naivete (i hope?) to even make and release something like this. at least not a lot of effort went to waste here ;)",
     "beatTokens": [
-      "BUCKET-",
-      "LOADS OF",
-      "A.I.",
-      "SLOP!"
+      "BUCKETLOADS",
+      "OF",
+      "AI",
+      "ARTWORK"
     ],
     "customStamp": {
-      "top": "BUCKET- LOADS OF",
-      "sub": "A.I. SLOP! // @MAALI"
+      "top": "BUCKETLOADS OF",
+      "sub": "AI ARTWORK // @MAALI"
     }
   },
   {
@@ -7562,13 +7562,13 @@ export const COMMUNITY_QUOTES = [
     "comment": "Lol fuck AI. Also\u2026 Grok? Seriously?",
     "beatTokens": [
       "LOL",
-      "FUCK",
-      "GROK",
-      "SLOP!"
+      "FUCK AI.",
+      "GROK?",
+      "SERIOUSLY?"
     ],
     "customStamp": {
-      "top": "LOL FUCK",
-      "sub": "GROK SLOP! // @UNCLE-X"
+      "top": "LOL FUCK AI.",
+      "sub": "GROK? SERIOUSLY? // @UNCLE-X"
     }
   },
   {
@@ -7594,12 +7594,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "HAVE YOU",
       "GONE",
-      "BLIND?!",
-      "0 DRAMA!"
+      "BLIND?",
+      "0 DRAMATURGY"
     ],
     "customStamp": {
       "top": "HAVE YOU GONE",
-      "sub": "BLIND?! 0 DRAMA! // @4GENTE"
+      "sub": "BLIND? 0 DRAMATURGY // @4GENTE"
     }
   },
   {
@@ -7626,10 +7626,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-08-19",
     "comment": "Restauration lol, restoration in english, i'm not even french for fucksake",
     "beatTokens": [
-      "RESTAU-",
-      "RATION?!",
+      "RESTAURATION",
+      "LOL",
       "NOT EVEN",
-      "FRENCH!"
+      "FRENCH"
     ],
     "threadContext": [
       {
@@ -7652,8 +7652,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "RESTAU- RATION?!",
-      "sub": "NOT EVEN FRENCH! // @OKKIE"
+      "top": "RESTAURATION LOL",
+      "sub": "NOT EVEN FRENCH // @OKKIE"
     }
   },
   {
@@ -7680,10 +7680,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-09-23",
     "comment": "a agents.md should be the making of!",
     "beatTokens": [
-      "MAKING",
-      "OF:",
-      "AGENTS",
-      ".MD!"
+      "AGENTS.MD",
+      "SHOULD BE",
+      "THE MAKING",
+      "OF!"
     ],
     "threadContext": [
       {
@@ -7706,8 +7706,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "MAKING OF:",
-      "sub": "AGENTS .MD! // @MAALI"
+      "top": "AGENTS.MD SHOULD BE",
+      "sub": "THE MAKING OF! // @MAALI"
     }
   },
   {
@@ -7735,9 +7735,9 @@ export const COMMUNITY_QUOTES = [
     "comment": "Let us not forget that the demo in question was released as recently as slightly over 26 years ago.",
     "beatTokens": [
       "RELEASED",
-      "26",
-      "YEARS",
-      "AGO BRO!"
+      "SLIGHTLY",
+      "OVER 26",
+      "YEARS AGO"
     ],
     "threadContext": [
       {
@@ -7760,8 +7760,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "RELEASED 26",
-      "sub": "YEARS AGO BRO! // @UNCLE-X"
+      "top": "RELEASED SLIGHTLY",
+      "sub": "OVER 26 YEARS AGO // @UNCLE-X"
     }
   },
   {
@@ -7787,12 +7787,12 @@ export const COMMUNITY_QUOTES = [
     "beatTokens": [
       "WALL OF",
       "QUASI",
-      "SMART",
-      "EXCUSES!"
+      "INTELLECTUAL",
+      "TEXT"
     ],
     "customStamp": {
       "top": "WALL OF QUASI",
-      "sub": "SMART EXCUSES! // @4GENTE"
+      "sub": "INTELLECTUAL TEXT // @4GENTE"
     }
   },
   {
@@ -7816,14 +7816,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-04-24",
     "comment": "Oh yeah, this shit fucking sucks lmoa (haven\u2019t watched it)",
     "beatTokens": [
-      "SUCKS!",
+      "THIS SHIT",
+      "FUCKING SUCKS",
       "(HAVEN'T",
-      "WATCHED",
-      "IT)"
+      "WATCHED IT)"
     ],
     "customStamp": {
-      "top": "SUCKS! (HAVEN'T",
-      "sub": "WATCHED IT) // @OKKIE"
+      "top": "THIS SHIT FUCKING SUCKS",
+      "sub": "(HAVEN'T WATCHED IT) // @OKKIE"
     }
   },
   {
@@ -7847,14 +7847,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2024-08-20",
     "comment": "and it's all video basically. (and not a demo, perhaps more a music disk so dunno why this was in the demo compo)",
     "beatTokens": [
-      "IT'S JUST",
-      "A VIDEO",
-      "PLAYER",
-      "WRAPPER!"
+      "IT'S ALL",
+      "VIDEO",
+      "NOT A",
+      "DEMO"
     ],
     "customStamp": {
-      "top": "IT'S JUST A VIDEO",
-      "sub": "PLAYER WRAPPER! // @MAALI"
+      "top": "IT'S ALL VIDEO",
+      "sub": "NOT A DEMO // @MAALI"
     }
   },
   {
@@ -7881,10 +7881,10 @@ export const COMMUNITY_QUOTES = [
     "date": "2026-10-12",
     "comment": "So you want tech-boys to re-invent emulators? Software that famously already exists.",
     "beatTokens": [
-      "EMULATORS",
+      "RE-INVENT",
+      "EMULATORS?",
       "ALREADY",
-      "EXIST",
-      "BRO!"
+      "EXISTS"
     ],
     "threadContext": [
       {
@@ -7907,8 +7907,8 @@ export const COMMUNITY_QUOTES = [
       }
     ],
     "customStamp": {
-      "top": "EMULATORS ALREADY",
-      "sub": "EXIST BRO! // @UNCLE-X"
+      "top": "RE-INVENT EMULATORS?",
+      "sub": "ALREADY EXISTS // @UNCLE-X"
     }
   },
   {
@@ -7932,14 +7932,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-23",
     "comment": "Haha, it just occured to me that prompting is also a \u201ctranslation\u201d process in which one translates original artists\u2019 talent and hard work plus countless slavelabour hours alignment work into techbro profit and personal fame. Not to mention the translation of original authors\u2019 very livelihoods and all the natural resources into users feeling like artists. In fact translating future children\u2019s lives into feeling talented. Ok, stop.",
     "beatTokens": [
-      "TRANSLATE",
-      "TALENT",
-      "INTO",
-      "SLOP!"
+      "TECHBRO",
+      "PROFIT",
+      "PERSONAL",
+      "FAME"
     ],
     "customStamp": {
-      "top": "TRANSLATE TALENT",
-      "sub": "INTO SLOP! // @4GENTE"
+      "top": "TECHBRO PROFIT",
+      "sub": "PERSONAL FAME // @4GENTE"
     }
   },
   {
@@ -7963,14 +7963,14 @@ export const COMMUNITY_QUOTES = [
     "date": "2025-04-21",
     "comment": "AI trash for the trashcan. SoDa7s tune deserved better.",
     "beatTokens": [
-      "AI",
-      "TRASH",
+      "AI TRASH",
       "FOR THE",
-      "CAN!"
+      "TRASH-",
+      "CAN"
     ],
     "customStamp": {
-      "top": "AI TRASH",
-      "sub": "FOR THE CAN! // @OKKIE"
+      "top": "AI TRASH FOR THE",
+      "sub": "TRASH- CAN // @OKKIE"
     }
   },
   {
@@ -7997,11 +7997,11 @@ export const COMMUNITY_QUOTES = [
       "THROW",
       "HTMLS IN",
       "ELECTRON",
-      "BRO!"
+      "BRO"
     ],
     "customStamp": {
       "top": "THROW HTMLS IN",
-      "sub": "ELECTRON BRO! // @MAALI"
+      "sub": "ELECTRON BRO // @MAALI"
     }
   }
 ];
