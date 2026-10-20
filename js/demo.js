@@ -147,6 +147,24 @@ const PROD_QUOTES = (() => {
 })();
 const FORUM_QUOTES = COMMUNITY_QUOTES.filter((q) => q.sourceType === 'topic');
 
+// Hand-picked running order: which comment each 4-hit pattern slams (by Pouët post id), so the strongest lines
+// play and nobody repeats back to back. Bar 32 keeps the title, Parts VIII and later have their own text
+const SLAM_PLAYLIST = {
+  // Part V: the first drop
+  34: '1052704', 36: '1052667', 38: '1050377', 40: '1028923', 42: '1050590', 44: '1052634',
+  // Part VI: the colosseum
+  48: '1003822', 50: '1021256', 52: '1050616', 54: '996031', 56: '1004408', 58: '1050534', 60: '1022551',
+  // Part VII: the guillotine
+  64: '1044985', 66: '1052757', 68: '1022144', 70: '1050524', 72: '1021209', 74: '603233', 76: '1021264',
+  // Part IX: the forum flamewar
+  96: '603503', 97: '603721', 98: '603499', 99: '603069', 100: '603500', 101: '603517', 102: '603657',
+  104: '603764', 105: '603255', 106: '603729', 107: '603717', 108: '603508', 109: '602499'
+};
+const QUOTE_BY_POST = new Map([...PROD_QUOTES, ...FORUM_QUOTES].map((q) => [q.postId, q]));
+for (const [bar, id] of Object.entries(SLAM_PLAYLIST)) {
+  if (!QUOTE_BY_POST.has(id)) console.warn(`SLAM_PLAYLIST: no quote ${id} for bar ${bar}`);
+}
+
 const dom = {
   webglContainer: document.getElementById('webgl-container'),
   aiTypingOverlay: document.getElementById('ai-typing-overlay'),
@@ -3051,8 +3069,10 @@ function triggerBomHit(bomEv) {
       const isForumPart = (bomEv.bar >= 96 && bomEv.bar < 144);
       const isOpeningAnthemDrop = (bomEv.bar === 32);
 
-      let item;
-      if (isForumPart) {
+      let item = QUOTE_BY_POST.get(SLAM_PLAYLIST[bomEv.bar]);
+      if (item) {
+        // From the running order
+      } else if (isForumPart) {
         const fc = state.forumCursor || 0;
         item = FORUM_QUOTES[fc % FORUM_QUOTES.length];
         state.forumCursor = fc + 1;
@@ -3234,17 +3254,10 @@ function onStep16Change(globalStep16, t) {
   // 2) Odd-bar 3-Hit Answer Bass Slam (steps 1, 7, 13 in Bars 41,43,45, 49,51.., 113,115..):
   if (ANSWER_BASS_BAR_SET.has(barNum) && (stepInBar === 1 || stepInBar === 7 || stepInBar === 13)) {
     // On step 1 of selected odd bars in Parts VI-VII (49, 53, 65, 69), advance to the next unique prod so all 29 prods are shown across Parts V-VII!
-    if (stepInBar === 1 && (barNum === 49 || barNum === 53 || barNum === 65 || barNum === 69)) {
-      const pc = state.prodCursor || 0;
-      const item = PROD_QUOTES[pc % PROD_QUOTES.length];
-      state.prodCursor = pc + 1;
-      state.commentCursor++;
-      updateHeroProdMonument(item);
-    } else {
-      repositionStampHammer();
-    }
+    repositionStampHammer();
     state.answerSlamEnv = 1.1;
     state.kickEnv = Math.max(state.kickEnv, 1.0);
+    if (getFeaturePart(barNum) === 'colosseum') colosseumHit(t, 1.6);
     state.stampHammerEnv = 1.1;
     const isPart9Odd = (barNum >= 96 && barNum < 144);
     if (getClimaxPhase(barNum)) {
@@ -3277,12 +3290,6 @@ function onStep16Change(globalStep16, t) {
       state.camTargetRoll = 0;
     }
   } else if (barNum >= 33 && barNum < 41 && barNum % 2 === 1 && stepInBar === 0) {
-    // In early odd bars (33, 35, 37, 39), advance the prod monument once on the downbeat so quotes stay readable!
-    const pc = state.prodCursor || 0;
-    const item = PROD_QUOTES[pc % PROD_QUOTES.length];
-    state.prodCursor = pc + 1;
-    state.commentCursor++;
-    updateHeroProdMonument(item);
     state.stampHammerEnv = 0.95;
   }
 
