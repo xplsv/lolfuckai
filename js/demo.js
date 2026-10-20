@@ -370,7 +370,7 @@ const WORD_BOM_BAR_SET = new Set(WORD_BOM_BARS);
 
 // Odd bars that have the heavy 3-hit "BOOM - BOOM - BOOM" answer bass slam on 16th steps 1, 7, 13!
 const ANSWER_BASS_BAR_SET = new Set([
-  41, 43, 45,
+  41, 43, 45, 47,
   49, 51, 53, 55, 57, 59, 61,
   65, 67, 69, 71, 73, 75, 77,
   113, 115, 117, 119, 121, 123, 125,
@@ -3830,13 +3830,20 @@ function triggerBomHit(bomEv) {
     tornadoMat.map = rapidTex;
     tornadoMat.needsUpdate = true;
   } else if (hitIdx === 3) {
-    // 4th BOM Hit: Slam the 3D Stamp Hammer onto a new position on the Hero Prod Monument!
-    repositionStampHammer();
-    state.stampHammerEnv = 1.4;
+    // 4th BOM Hit: Slam the 3D Stamp Hammer onto a new position on the Hero Prod Monument (still before Bar 41)
+    if (bomEv.bar >= 41) {
+      repositionStampHammer();
+      state.stampHammerEnv = 1.4;
+    }
     state.invertEnv = 0.55 + chaos * 0.45;
     state.glitchTear = 0.55 + chaos * 0.45;
   } else {
     state.glitchTear = (hitIdx === 1 ? 0.5 : 0.25) * (0.4 + chaos * 0.8);
+    // From Bar 41 in Part V the stamp is out, so it slams on every hit, not only the 4th
+    if (bomEv.bar >= 41 && bomEv.bar < 48) {
+      repositionStampHammer();
+      state.stampHammerEnv = 1.1;
+    }
   }
 
   // Closer, punchier camera framing (z = 11.8..12.5) with calm, steady framing in Part IX Overdrive!
@@ -3925,8 +3932,6 @@ function onStep16Change(globalStep16, t) {
       state.camTargetLook.set(0, 0.2, -0.5);
       state.camTargetRoll = 0;
     }
-  } else if (barNum >= 33 && barNum < 41 && barNum % 2 === 1 && stepInBar === 0) {
-    state.stampHammerEnv = 0.95;
   }
 
   // 3) Snare / Clap Answer Stabs on steps 4, 10, 14 (skip during 0:26.30 - 0:52.60 and 2:11.51 - 2:37.81 chill sections)
@@ -4343,6 +4348,9 @@ function animate(nowMs) {
   // ANIMATE GIANT CENTERPIECE 3D POUËT PROD MONUMENT & 3D STAMP HAMMER
   // --------------------------------------------------------------------------
   if (heroMonument.visible) {
+    // In the first half of Part V the stamp sits still; it only starts slamming with the answer slams (Bar 41)
+    const stampStill = currentBar >= 32 && currentBar < 41;
+    stamp3DHammer.visible = activeHeroItem?.sourceType !== 'kisses';
     // Keep scale grounded at z = -1.5 so the demo screenshot never lunges toward the camera.
     // In the thumb swarm half the screen is hidden anyway; keep it still if it ever shows.
     const monSway = climaxPhase === 2 ? 0 : 1;
@@ -4353,7 +4361,7 @@ function animate(nowMs) {
     leftPylon.rotation.set(t * 2.5, t * 3.2, state.kickEnv);
     rightPylon.rotation.set(-t * 2.5, -t * 3.2, -state.kickEnv);
 
-    const stampEnv = state.stampHammerEnv * monSway;
+    const stampEnv = stampStill ? 0 : state.stampHammerEnv * monSway;
     stamp3DHammer.position.z = 0.75 + stampEnv * 2.2;
     stamp3DHammer.scale.setScalar(1.0 + stampEnv * 0.35);
     stamp3DHammer.rotation.z = stampBaseRotZ + Math.sin(t * 20) * 0.08 * stampEnv;
