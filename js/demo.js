@@ -235,7 +235,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_104438.jpg',
     prodName: 'VALENTINE #3 // OKKIE',
     award: 'THE LIE MACHINE HUNTER // 21 SUCKS & FLAMES',
-    comment: 'actually, an llm would be terrible at this, so lmao but because I love you rob, here is a cool picture of a horse <3',
+    comment: 'Love shitting up this thread btw lol, until havoc is tired and closes it. ILU havoc <3',
     kissNote: 'WE WILL NEVER DELETE OUR LOVE FOR YOU OKKIE <3',
     beatTokens: ['SMOOCHES', 'TO', 'OKKIE', 'MWAH <3']
   },
@@ -271,7 +271,7 @@ const HATER_KISSES = [
     screenshot: 'assets/screenshots/prod_106154.jpg',
     prodName: 'VALENTINE #6 // KANEEL',
     award: 'POUËT SIN CONFESSOR // 17 SUCKS & FLAMES',
-    comment: 'I WANT POUET TO ACCEPT MY SINS',
+    comment: 'I remember being impressed by you folks, I remember being inspired… ha, the naivety of a young ginger french man.',
     kissNote: 'GROS BISOUS MON CHER KANEEL XOXO <3',
     beatTokens: ['BISOUS', 'TO', 'KANEEL', 'XOXO <3']
   },
