@@ -398,6 +398,13 @@ function getClimaxPhase(barNum) {
   return 0;
 }
 
+// Parts VI and VII each get one effect instead of the Pouët screen: the screenshot colosseum, then the industrial guillotine
+function getFeaturePart(barNum) {
+  if (barNum >= 48 && barNum < 64) return 'colosseum';
+  if (barNum >= 64 && barNum < 80) return 'guillotine';
+  return null;
+}
+
 const BOM_EVENTS = [];
 for (const barNum of INTRO_BOM_BARS) {
   const barStart = barNum * BAR_SEC;
@@ -452,6 +459,7 @@ const state = {
   thumbsUpPopEnv: 0,
   tunnelFlashEnv: 0,
   climaxBank: 0,
+  chopFlash: 0,
   swarmShape: 'lol',
   laserPattern: 0,
   shaftOffset: 0,
@@ -754,6 +762,14 @@ const postUniforms = {
   uInvert: { value: 0.0 },
   uOverdrive: { value: 0.0 },
   uMono: { value: 0.0 },
+  uCutAngle: { value: 0.0 },
+  uCutX: { value: 0.5 },
+  uCutY: { value: 0.5 },
+  uCutShift: { value: 0.0 },
+  uCutGlow: { value: 0.0 },
+  uDuotone: { value: 0.0 },
+  uBloom: { value: 0.0 },
+  uGrade: { value: 0.0 },
   uRadial: { value: 0.0 },
   uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
 };
@@ -776,6 +792,14 @@ const postMat = new THREE.ShaderMaterial({
     uniform float uInvert;
     uniform float uOverdrive;
     uniform float uMono;
+    uniform float uCutAngle;
+    uniform float uCutX;
+    uniform float uCutY;
+    uniform float uCutShift;
+    uniform float uCutGlow;
+    uniform float uDuotone;
+    uniform float uBloom;
+    uniform float uGrade;
     uniform float uRadial;
     uniform vec2 uResolution;
     varying vec2 vUv;
@@ -791,6 +815,17 @@ const postMat = new THREE.ShaderMaterial({
       // Base zoom-in (overscan) so barrel distortion, chromatic shift & glitch slices never clamp/stretch edge pixels
       float zoomScale = 0.89 - uZoomPunch * 0.10 - uOverdrive * 0.05 - uGlitch * 0.08;
       vec2 uv = 0.5 + center * zoomScale + center * r2 * (0.10 + uOverdrive * 0.14);
+
+      // Guillotine slice: everything above the cut slides along it, with a hot line on the cut
+      float cutLine = 0.0;
+      if (uCutGlow > 0.001 || abs(uCutShift) > 0.0001) {
+        float aspect = uResolution.x / uResolution.y;
+        vec2 cdir = vec2(cos(uCutAngle), sin(uCutAngle));
+        vec2 p = (uv - vec2(uCutX, uCutY)) * vec2(aspect, 1.0);
+        float side = dot(p, vec2(-cdir.y, cdir.x));
+        uv += vec2(cdir.x / aspect, cdir.y) * uCutShift * step(0.0, side);
+        cutLine = (1.0 - smoothstep(0.0, 0.003 + uCutGlow * 0.006, abs(side))) * uCutGlow;
+      }
 
       float sliceY = floor(uv.y * (30.0 + uOverdrive * 18.0) + uTime * 21.0);
       float sliceNoise = hash(sliceY + floor(uTime * 38.0));
@@ -838,6 +873,38 @@ const postMat = new THREE.ShaderMaterial({
         vec3 mono = mix(vec3(luma), vec3(min(1.0, col.r * 1.2), 0.02, 0.06), redness);
         col = mix(col, mono, uMono);
       }
+
+      // Colosseum look: glow around the bright bits, magenta shadows and cyan highlights, dark corners
+      if (uBloom > 0.01) {
+        vec3 glow = vec3(0.0);
+        float aspectB = uResolution.x / uResolution.y;
+        for (int i = 0; i < 16; i++) {
+          float fi = float(i);
+          float a = fi * 2.39996;
+          float rad = 0.004 + fi * 0.0022;
+          vec3 s = texture2D(tDiffuse, clamp(uv + vec2(cos(a) / aspectB, sin(a)) * rad, 0.001, 0.999)).rgb;
+          glow += max(s - 0.4, 0.0);
+        }
+        col += glow / 16.0 * uBloom * 3.0;
+      }
+      if (uGrade > 0.01) {
+        float l = dot(col, vec3(0.299, 0.587, 0.114));
+        vec3 tint = mix(vec3(1.25, 0.55, 1.45), vec3(0.8, 1.15, 1.25), smoothstep(0.05, 0.6, l));
+        col = mix(col, col * tint, uGrade);
+        col *= 1.0 - uGrade * 0.75 * smoothstep(0.35, 0.85, length(center) * 1.25);
+      }
+
+      // Red tritone: black to red to yellow to white, so the highlights burn yellow
+      if (uDuotone > 0.01) {
+        float l = dot(col, vec3(0.299, 0.587, 0.114));
+        vec3 red = vec3(0.9, 0.03, 0.07);
+        vec3 yellow = vec3(1.0, 0.82, 0.12);
+        vec3 duo = l < 0.4
+          ? mix(vec3(0.0), red, l / 0.4)
+          : (l < 0.75 ? mix(red, yellow, (l - 0.4) / 0.35) : mix(yellow, vec3(1.0), (l - 0.75) / 0.25));
+        col = mix(col, duo, uDuotone);
+      }
+      col += vec3(1.0, 0.85, 0.3) * cutLine;
 
       if (uInvert > 0.01) {
         float invAmt = clamp(uInvert, 0.0, 1.0);
@@ -2556,15 +2623,15 @@ scene.add(tornadoInstanced);
 
 // EFFECT E: Pouët thumbs for the climax: swirling down the rectangle tunnel, then swarming into shapes (3:04 - 3:56)
 // The SVGs are only 16px, so rasterize them big on a canvas instead of letting the loader do it at 16px
-function makeThumbTexture(url) {
+function makeThumbTexture(url, size = 128) {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = size;
+  canvas.height = size;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const img = new Image();
   img.onload = () => {
-    canvas.getContext('2d').drawImage(img, 0, 0, 128, 128);
+    canvas.getContext('2d').drawImage(img, 0, 0, size, size);
     tex.needsUpdate = true;
   };
   img.src = url;
@@ -2772,6 +2839,616 @@ const SWARM_LASER_PATTERN_COUNT = 5;
 function nextLaserPattern() {
   state.laserPattern = (state.laserPattern + 1) % SWARM_LASER_PATTERN_COUNT;
 }
+
+// ============================================================================
+// PART VI: SCREENSHOT COLOSSEUM (1:18.9 - 1:45.2)
+// A 360° amphitheatre built from the AI prods' screenshots, in tiers spinning in alternating directions.
+// Screens flip over to new screenshots in a wave on every hit, and the camera circles inside it
+// ============================================================================
+const COLOSSEUM_SHOTS = [...new Set(PROD_QUOTES.map((q) => q.screenshot).filter(Boolean))];
+// Comment cards (avatar, @name, prod, comment) share the atlas with the screenshots
+const COLOSSEUM_CARDS = (() => {
+  const seen = new Set();
+  const out = [];
+  for (const q of PROD_QUOTES) {
+    const key = `${q.author}:${(q.comment || '').slice(0, 40)}`;
+    if (!q.comment || seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+    if (out.length >= 48) break;
+  }
+  return out;
+})();
+const ATLAS_COLS = 8;
+const ATLAS_TILE_W = 512;
+const ATLAS_TILE_H = 320;
+const COLOSSEUM_TILES = COLOSSEUM_SHOTS.length + COLOSSEUM_CARDS.length;
+const ATLAS_ROWS = Math.ceil(COLOSSEUM_TILES / ATLAS_COLS);
+const atlasCanvas = document.createElement('canvas');
+atlasCanvas.width = ATLAS_COLS * ATLAS_TILE_W;
+atlasCanvas.height = ATLAS_ROWS * ATLAS_TILE_H;
+const atlasCtx = atlasCanvas.getContext('2d');
+atlasCtx.fillStyle = '#10141c';
+atlasCtx.fillRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+const atlasTex = new THREE.CanvasTexture(atlasCanvas);
+atlasTex.colorSpace = THREE.SRGBColorSpace;
+COLOSSEUM_SHOTS.forEach((url, i) => {
+  const img = new Image();
+  img.onload = () => {
+    atlasCtx.drawImage(img, (i % ATLAS_COLS) * ATLAS_TILE_W, Math.floor(i / ATLAS_COLS) * ATLAS_TILE_H, ATLAS_TILE_W, ATLAS_TILE_H);
+    atlasTex.needsUpdate = true;
+  };
+  img.src = url;
+});
+function drawColosseumCard(index, q, avatar) {
+  const x = (index % ATLAS_COLS) * ATLAS_TILE_W;
+  const y = Math.floor(index / ATLAS_COLS) * ATLAS_TILE_H;
+  const ctx = atlasCtx;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#0c111d';
+  ctx.fillRect(0, 0, ATLAS_TILE_W, ATLAS_TILE_H);
+  if (avatar) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(avatar, 26, 26, 72, 72);
+  }
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffdd00';
+  ctx.font = 'bold 44px monospace';
+  ctx.fillText(`@${q.author || 'uncle-x'}`, 116, 70, ATLAS_TILE_W - 136);
+  ctx.fillStyle = '#8ab8f0';
+  ctx.font = 'bold 24px monospace';
+  ctx.fillText((q.prodName || '').toUpperCase(), 118, 100, ATLAS_TILE_W - 138);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 30px Arial, Helvetica, sans-serif';
+  const lines = wrapCanvasLines(ctx, q.comment, ATLAS_TILE_W - 52, 5);
+  for (let l = 0; l < lines.length; l++) ctx.fillText(lines[l], 26, 154 + l * 36, ATLAS_TILE_W - 52);
+  ctx.restore();
+  atlasTex.needsUpdate = true;
+}
+COLOSSEUM_CARDS.forEach((q, i) => {
+  const index = COLOSSEUM_SHOTS.length + i;
+  drawColosseumCard(index, q, null);
+  const img = new Image();
+  img.onload = () => drawColosseumCard(index, q, img);
+  img.src = q.avatarPath || 'assets/avatars/mfx.gif';
+});
+// Every third screen shows a comment card, the rest screenshots; every seventh shows the prod being talked about
+let colosseumFocusTile = -1;
+function colosseumTileFor(slot, tier, seed) {
+  const n = slot * 5 + tier * 11 + seed;
+  if (colosseumFocusTile >= 0 && (slot * 3 + tier) % 7 === 0) return colosseumFocusTile;
+  return (slot + tier) % 3 === 0
+    ? COLOSSEUM_SHOTS.length + (n % COLOSSEUM_CARDS.length)
+    : n % COLOSSEUM_SHOTS.length;
+}
+
+// Tiers rise and widen like stadium seating
+const COLOSSEUM_TIERS = [];
+// Radius of the arena wall at a height: it leans out only slightly, so rows never overlap each other
+const colosseumWallR = (y) => 30 + (y + 16) * 0.2;
+[-15.6, -11.4, -7.2, -1.6, 2.6, 9.0, 13.2, 17.4].forEach((y, k) => {
+  const r = colosseumWallR(y);
+  COLOSSEUM_TIERS.push({ r, y, count: Math.floor((Math.PI * 2 * r) / 6.6), dir: k % 2 === 0 ? 1 : -1 });
+});
+const colosseumSlots = [];
+COLOSSEUM_TIERS.forEach((tier, k) => {
+  for (let s = 0; s < tier.count; s++) colosseumSlots.push({ tier: k, slot: s });
+});
+const COLOSSEUM_COUNT = colosseumSlots.length;
+const colosseumTile = new THREE.InstancedBufferAttribute(new Float32Array(COLOSSEUM_COUNT), 1);
+colosseumTile.setUsage(THREE.DynamicDrawUsage);
+const colosseumNextTile = new Float32Array(COLOSSEUM_COUNT);
+const colosseumFlipAt = new Float32Array(COLOSSEUM_COUNT).fill(-10);
+for (let i = 0; i < COLOSSEUM_COUNT; i++) {
+  const { tier, slot } = colosseumSlots[i];
+  colosseumTile.array[i] = colosseumTileFor(slot, tier, 0);
+  colosseumNextTile[i] = colosseumTile.array[i];
+}
+const colosseumGeo = new THREE.PlaneGeometry(5.8, 3.6);
+colosseumGeo.setAttribute('aTile', colosseumTile);
+const colosseumScreens = new THREE.InstancedMesh(
+  colosseumGeo,
+  new THREE.ShaderMaterial({
+    uniforms: {
+      tAtlas: { value: atlasTex },
+      uGrid: { value: new THREE.Vector2(ATLAS_COLS, ATLAS_ROWS) },
+      uFlash: { value: 0 },
+      uFocus: { value: -1 },
+      uPulse: { value: 0 },
+      uTime: { value: 0 }
+    },
+    vertexShader: `
+      attribute float aTile;
+      varying vec2 vUv;
+      varying float vTile;
+      varying float vDepth;
+      varying float vId;
+      void main() {
+        vUv = uv;
+        vTile = aTile;
+        vId = float(gl_InstanceID);
+        vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+        vDepth = -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D tAtlas;
+      uniform vec2 uGrid;
+      uniform float uFlash;
+      uniform float uFocus;
+      uniform float uPulse;
+      uniform float uTime;
+      varying float vId;
+      varying vec2 vUv;
+      varying float vTile;
+      varying float vDepth;
+      void main() {
+        float tile = floor(vTile + 0.5);
+        vec2 cell = vec2(mod(tile, uGrid.x), uGrid.y - 1.0 - floor(tile / uGrid.x));
+        vec3 c = texture2D(tAtlas, (cell + vUv) / uGrid).rgb;
+        // Thin red frame around each screen
+        vec2 e = min(vUv, 1.0 - vUv);
+        c = mix(c, vec3(1.0, 0.07, 0.18), step(min(e.x * 1.6, e.y), 0.03));
+        c *= 2.0 * exp(-vDepth * 0.016);
+        // The prod the current comment is about: thick yellow frame, glowing
+        if (abs(tile - uFocus) < 0.5) {
+          float rim = step(min(e.x * 1.6, e.y), 0.08);
+          c = mix(c * (1.3 + uPulse * 0.6), vec3(1.0, 0.86, 0.1) * (1.4 + uPulse), rim);
+          c += vec3(0.25, 0.2, 0.0) * uPulse;
+        } else if (uFocus >= 0.0) {
+          c *= 0.55;
+        }
+        // Camera flashes popping around the stands
+        float slot = floor(uTime * 12.0);
+        float pop = fract(sin(vId * 12.9898 + slot * 78.233) * 43758.5453);
+        c += vec3(1.0) * step(0.992, pop) * (1.0 - fract(uTime * 12.0)) * 1.5;
+        gl_FragColor = vec4(c + uFlash * 0.35, 1.0);
+      }
+    `,
+    side: THREE.DoubleSide
+  }),
+  COLOSSEUM_COUNT
+);
+colosseumScreens.frustumCulled = false;
+const colosseumGroup = new THREE.Group();
+colosseumGroup.add(colosseumScreens);
+colosseumGroup.visible = false;
+scene.add(colosseumGroup);
+const colosseumTierAngle = new Float32Array(COLOSSEUM_TIERS.length);
+const colosseumTierSpin = new Float32Array(COLOSSEUM_TIERS.length);
+
+// Stadium tickers: LED rings around the arena. The upper one scrolls the comment behind the current words,
+// the lower one the haters' names, the other way
+function makeTicker(radius, y, height) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 8192;
+  canvas.height = 320;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.repeat.x = -1; // Seen from inside the ring, so mirror it back
+  tex.anisotropy = 8;
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, height, 128, 1, true),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false })
+  );
+  mesh.position.y = y;
+  colosseumGroup.add(mesh);
+  // Horizontal squeeze that makes the text look unstretched on this ring
+  const naturalSx = (8192 / (Math.PI * 2 * radius)) / (320 / height);
+  return { canvas, tex, mesh, text: null, naturalSx };
+}
+function setTickerText(ticker, segments) {
+  // segments: [[text, colour], ...], drawn left to right and stretched to fill the ring
+  const key = segments.map((s) => s[0]).join('|');
+  if (ticker.text === key) return;
+  ticker.text = key;
+  const ctx = ticker.canvas.getContext('2d');
+  ctx.fillStyle = '#05070c';
+  ctx.fillRect(0, 0, 8192, 320);
+  ctx.fillStyle = '#ff1234';
+  ctx.fillRect(0, 0, 8192, 14);
+  ctx.fillRect(0, 306, 8192, 14);
+  ctx.font = 'bold 150px Arial, Helvetica, sans-serif';
+  ctx.textBaseline = 'middle';
+  const total = segments.reduce((w, s) => w + ctx.measureText(s[0]).width, 0);
+  // Tile whole copies around the ring so there's no seam; squeeze only when one copy doesn't fit
+  const copies = Math.max(1, Math.floor(8192 / (total * ticker.naturalSx)));
+  const sx = 8192 / (copies * total);
+  ctx.save();
+  ctx.translate(0, 166);
+  ctx.scale(sx, 1);
+  let x = 0;
+  for (let c = 0; c < copies; c++) {
+    for (const [text, colour] of segments) {
+      ctx.fillStyle = colour;
+      ctx.fillText(text, x, 0);
+      x += ctx.measureText(text).width;
+    }
+  }
+  ctx.restore();
+  ticker.tex.needsUpdate = true;
+}
+const tickerComment = makeTicker(colosseumWallR(5.8) - 0.5, 5.8, 2.4);
+const tickerNames = makeTicker(colosseumWallR(-4.4) - 0.5, -4.4, 1.6);
+setTickerText(tickerNames, [[[...new Set(PROD_QUOTES.map((q) => `@${q.author || 'uncle-x'}`))].join('   *   ') + '   *   ', '#ffdd00']]);
+
+// Searchlights from the thumbs-down on the floor up to the screens showing the prod being talked about
+const SEARCHLIGHT_COUNT = 6;
+const searchlightGeo = new THREE.CylinderGeometry(0.5, 3.2, 1, 24, 1, true);
+searchlightGeo.translate(0, -0.5, 0); // Apex at the origin, extending along -y
+searchlightGeo.rotateX(-Math.PI / 2); // ...now along +z, so lookAt() aims it
+const searchlightMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uColor: { value: new THREE.Color(0xffe27a) },
+    uIntensity: { value: 1.0 }
+  },
+  vertexShader: `
+    varying float vAlong;
+    varying vec3 vNormal;
+    varying vec3 vViewPos;
+    void main() {
+      vAlong = position.z;
+      vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      vViewPos = mv.xyz;
+      vNormal = normalize(mat3(modelViewMatrix * instanceMatrix) * vec3(normal.xy, 0.0));
+      gl_Position = projectionMatrix * mv;
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 uColor;
+    uniform float uIntensity;
+    varying float vAlong;
+    varying vec3 vNormal;
+    varying vec3 vViewPos;
+    void main() {
+      // Invisible at the source, building up toward the screen it lights
+      float along = smoothstep(0.0, 0.7, vAlong);
+      // Soft edges: brightest through the middle of the beam, fading at its sides
+      float core = pow(abs(dot(normalize(vNormal), normalize(-vViewPos))), 2.6);
+      gl_FragColor = vec4(uColor * 0.5 * uIntensity * along * core, 1.0);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
+const searchlights = new THREE.InstancedMesh(searchlightGeo, searchlightMat, SEARCHLIGHT_COUNT);
+searchlights.frustumCulled = false;
+colosseumGroup.add(searchlights);
+const searchlightTarget = new THREE.Vector3();
+// World positions of the highlighted screens, filled in each frame
+const focusScreens = Array.from({ length: 80 }, () => new THREE.Vector3());
+let focusScreenCount = 0;
+
+const floorEmblem = new THREE.Mesh(
+  new THREE.CircleGeometry(12, 64),
+  new THREE.MeshBasicMaterial({ map: makeThumbTexture('assets/sucks.svg', 1024), transparent: true, alphaTest: 0.4, fog: false })
+);
+floorEmblem.rotation.x = -Math.PI / 2;
+floorEmblem.position.y = -18.0;
+colosseumGroup.add(floorEmblem);
+
+// On a hit: flip every screen over to a new screenshot in a wave around the arena, and kick the tiers' spin
+function colosseumHit(t, strength) {
+  const seed = 1 + Math.floor(Math.random() * 97);
+  for (let i = 0; i < COLOSSEUM_COUNT; i++) {
+    const { tier, slot } = colosseumSlots[i];
+    const u = slot / COLOSSEUM_TIERS[tier].count;
+    colosseumFlipAt[i] = t + u * 0.22 + tier * 0.02;
+    colosseumNextTile[i] = colosseumTileFor(slot + (seed % 3), tier, seed);
+  }
+  for (let k = 0; k < COLOSSEUM_TIERS.length; k++) colosseumTierSpin[k] = COLOSSEUM_TIERS[k].dir * strength;
+}
+
+
+// ============================================================================
+// PART VII: INDUSTRIAL GUILLOTINE (1:45.2 - 2:11.5)
+// A guillotine in front of a line of guillotines receding into the dark. Its blade drops onto every hit
+// and answer slam, slicing the whole image along the blade edge, with sparks and a red flash
+// ============================================================================
+// Every chop: the 4 BOM hits of the even bars and the 3 answer slams of the odd bars. Each one cuts a different prod
+// The prods the guillotine cuts, each stamped with a short comment it got. All different prods, so every cut
+// is a new one, and none of these comments are slammed elsewhere
+const GUILLOTINE_PRODS = [
+  '1052625', '1050582', '1028723', '1021280', '996051', '1050335', '1050498',
+  '1054304', '994776', '1043220', '1003821', '1050475', '1044989', '1050562'
+].map((id) => QUOTE_BY_POST.get(id)).filter(Boolean);
+const CHOP_TIMES = [];
+for (let bar = 64; bar <= 77; bar++) {
+  if (bar % 2 === 0) {
+    for (let h = 0; h < 4; h++) CHOP_TIMES.push({ t: bar * BAR_SEC + BOM_OFFSETS[h], n: CHOP_TIMES.length });
+  } else {
+    for (const step of [1, 7, 13]) CHOP_TIMES.push({ t: bar * BAR_SEC + step * STEP16_SEC, n: CHOP_TIMES.length });
+  }
+}
+// Each prod's screenshot with its comment stamped on it in red ink, so the blade cuts through the stamp too
+const stampRand = (n, k) => {
+  const x = Math.sin(n * 91.3 + k * 17.9) * 43758.5453;
+  return x - Math.floor(x);
+};
+function drawCommentStamp(item, n) {
+  // Light ink on a dark backing, so it still reads under the red duotone
+  const ink = '#fff4f4';
+  const author = `@${(item.author || 'uncle-x').toUpperCase()}`;
+  const text = (item.comment || '').replace(/\s+/g, ' ').trim().toUpperCase();
+  const W = 900;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = 460;
+  const ctx = c.getContext('2d');
+  ctx.font = '900 58px Impact, Anton, sans-serif';
+  const lines = wrapCanvasLines(ctx, text.length > 110 ? `${text.slice(0, 107)}...` : text, W - 110, 3);
+  const h = 44 + 92 + lines.length * 62 + 30;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+  ctx.fillRect(10, 10, W - 20, h - 20);
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 12;
+  ctx.strokeRect(12, 12, W - 24, h - 24);
+  ctx.lineWidth = 5;
+  ctx.strokeRect(30, 30, W - 60, h - 60);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '900 88px Impact, Anton, sans-serif';
+  ctx.fillText(author, W / 2, 124, W - 100);
+  ctx.font = '900 58px Impact, Anton, sans-serif';
+  lines.forEach((l, i) => ctx.fillText(l, W / 2, 196 + i * 62, W - 100));
+  // Worn ink: knock random specks out of the stamp
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 1100; i++) {
+    const r = stampRand(n, i);
+    const x = stampRand(n, i + 1000) * W;
+    const y = stampRand(n, i + 2000) * h;
+    ctx.globalAlpha = 0.2 + r * 0.55;
+    ctx.fillRect(x, y, 1 + r * 4, 1 + stampRand(n, i + 3000) * 3);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  return { canvas: c, h, w: W };
+}
+const stampedShots = new Map();
+function getStampedShot(item, n) {
+  if (stampedShots.has(n)) return stampedShots.get(n);
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 576;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#101014';
+  ctx.fillRect(0, 0, 1024, 576);
+  stampedShots.set(n, tex);
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, 1024, 576);
+    const stamp = drawCommentStamp(item, n);
+    ctx.save();
+    // Centred on the shot, a bit smaller
+    ctx.translate(512 + (stampRand(n, 1) - 0.5) * 70, 290 + (stampRand(n, 2) - 0.5) * 70);
+    ctx.rotate((stampRand(n, 3) - 0.5) * 0.3);
+    ctx.scale(0.72, 0.72);
+    ctx.globalAlpha = 0.95;
+    ctx.drawImage(stamp.canvas, 0, 0, stamp.w, stamp.h, -stamp.w / 2, -stamp.h / 2, stamp.w, stamp.h);
+    ctx.restore();
+    tex.needsUpdate = true;
+  };
+  img.src = item.screenshot;
+  return tex;
+}
+GUILLOTINE_PRODS.forEach((q, i) => getStampedShot(q, i));
+const CHOP_FALL = 0.075;
+const CHOP_HOLD = 0.06;
+const CHOP_RISE = 0.14;
+const BLADE_Z = -0.9; // Just behind the words, so the blade never hides them; the image slice chops them
+const BLADE_EDGE_Y = -0.6;
+const BLADE_TOP_Y = 9.5; // Out of frame, even tilted
+// The words move back into the guillotine, scaled up so they stay as big on screen
+const GUILLOTINE_WORD_PUSH = 5.0;
+const GUILLOTINE_WORD_SCALE = 0.85;
+const GUILLOTINE_WORD_Y = 3.7; // Above the screenshot plate
+
+const guillotineSteelMat = new THREE.MeshStandardMaterial({ color: 0x3a3c44, roughness: 0.45, metalness: 0.55 });
+const guillotineRedMat = new THREE.MeshBasicMaterial({ color: 0xff1a2a });
+const bladeMat = new THREE.MeshStandardMaterial({ color: 0xc8ccd6, roughness: 0.22, metalness: 0.35, emissive: 0x220406, emissiveIntensity: 1.0 });
+const bladeEdgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+function makeGuillotine(width, height) {
+  const g = new THREE.Group();
+  const postGeo = new THREE.BoxGeometry(0.9, height, 0.9);
+  const stripGeo = new THREE.BoxGeometry(0.12, height, 0.12);
+  for (const side of [-1, 1]) {
+    const post = new THREE.Mesh(postGeo, guillotineSteelMat);
+    post.position.set(side * width / 2, 0, 0);
+    const strip = new THREE.Mesh(stripGeo, guillotineRedMat);
+    strip.position.set(side * (width / 2 - 0.5), 0, 0.46);
+    g.add(post, strip);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(width + 0.9, 0.9, 1.0), guillotineSteelMat);
+  beam.position.y = height / 2;
+  g.add(beam);
+  // The blade: a steel slab with a bright cutting edge along its bottom
+  const blade = new THREE.Group();
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(width - 1.0, 2.4, 0.22), bladeMat);
+  slab.position.y = 1.2;
+  const weight = new THREE.Mesh(new THREE.BoxGeometry(width - 1.0, 0.9, 0.7), guillotineSteelMat);
+  weight.position.y = 2.85;
+  blade.add(weight);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(width - 1.0, 0.1, 0.26), bladeEdgeMat);
+  edge.position.y = 0.05;
+  blade.add(slab, edge);
+  g.add(blade);
+  g.userData.blade = blade;
+  return g;
+}
+const guillotineGroup = new THREE.Group();
+const guillotineMain = makeGuillotine(16.4, 20);
+guillotineMain.position.set(0, 2.0, BLADE_Z - 0.2);
+guillotineMain.userData.blade.position.z = 0.2;
+// One guillotine per drop: the line slides forward one guillotine between drops
+const GUILLOTINE_SPACING = 9.0;
+const GUILLOTINE_FRONT_Z = BLADE_Z - 0.2;
+
+guillotineGroup.add(guillotineMain);
+const GUILLOTINE_LINE = 7;
+const guillotineLine = [];
+for (let i = 0; i < GUILLOTINE_LINE; i++) {
+  const g = makeGuillotine(16.4, 20);
+  g.position.set(0, 2.0, BLADE_Z - 10 - i * 9);
+  guillotineGroup.add(g);
+  guillotineLine.push(g);
+}
+const guillotineFrames = [guillotineMain, ...guillotineLine];
+
+// Sparks thrown off along the cut
+const SPARK_COUNT = 240;
+const sparks = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.07, 0.07, 0.5),
+  new THREE.MeshBasicMaterial({ color: 0xffb040, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false }),
+  SPARK_COUNT
+);
+sparks.frustumCulled = false;
+guillotineGroup.add(sparks);
+const sparkData = Array.from({ length: SPARK_COUNT }, () => ({ born: -10, p: new THREE.Vector3(), v: new THREE.Vector3() }));
+let sparkCursor = 0;
+let lastChopN = -1;
+function spawnChopSparks(t, angle) {
+  for (let i = 0; i < 48; i++) {
+    const s = sparkData[sparkCursor];
+    sparkCursor = (sparkCursor + 1) % SPARK_COUNT;
+    const x = (Math.random() - 0.5) * 15.0;
+    s.born = t;
+    s.p.set(x, BLADE_EDGE_Y + x * Math.tan(angle), BLADE_Z + 0.3);
+    s.v.set((Math.random() - 0.5) * 9.0, 3.0 + Math.random() * 7.0, (Math.random() - 0.2) * 6.0);
+  }
+}
+guillotineGroup.visible = false;
+scene.add(guillotineGroup);
+// The current prod's screenshot sits in the guillotine and gets cut: two copies of the plate, each keeping
+// one side of the blade edge, so the top piece can slide off along the cut
+const PLATE_W = 12.0;
+const PLATE_H = 6.75;
+const PLATE_Y = 0.3;
+const PLATE_Z = -1.45;
+const plateUniformsFor = (side) => ({
+  tMap: { value: null },
+  uCutAngle: { value: 0 },
+  uCutY: { value: BLADE_EDGE_Y - PLATE_Y },
+  uSide: { value: side },
+  uGlow: { value: 0 }
+});
+function makePlatePiece(side) {
+  return new THREE.Mesh(
+    new THREE.PlaneGeometry(PLATE_W, PLATE_H),
+    new THREE.ShaderMaterial({
+      uniforms: plateUniformsFor(side),
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec2 vLocal;
+        void main() {
+          vUv = uv;
+          vLocal = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tMap;
+        uniform float uCutAngle;
+        uniform float uCutY;
+        uniform float uSide;
+        uniform float uGlow;
+        varying vec2 vUv;
+        varying vec2 vLocal;
+        void main() {
+          vec2 n = vec2(-sin(uCutAngle), cos(uCutAngle));
+          float s = dot(vLocal - vec2(0.0, uCutY), n) * uSide;
+          if (s < 0.0) discard;
+          vec3 c = texture2D(tMap, vUv).rgb * 1.5;
+          // Frame and a hot edge along the fresh cut
+          vec2 e = min(vUv, 1.0 - vUv);
+          c = mix(c, vec3(1.0), step(min(e.x * 1.78, e.y), 0.012));
+          c += vec3(1.0, 0.85, 0.6) * uGlow * (1.0 - smoothstep(0.0, 0.18, s));
+          gl_FragColor = vec4(c, 1.0);
+        }
+      `,
+      side: THREE.DoubleSide
+    })
+  );
+}
+
+const plateWhole = makePlatePiece(0);
+plateWhole.position.set(0, PLATE_Y, PLATE_Z);
+guillotineGroup.add(plateWhole);
+// The two halves of each cut fly away in random directions; a few pairs so they can overlap
+const PLATE_PAIRS = 4;
+const platePairs = [];
+for (let i = 0; i < PLATE_PAIRS; i++) {
+  const lower = makePlatePiece(-1);
+  const upper = makePlatePiece(1);
+  guillotineGroup.add(lower, upper);
+  platePairs.push([lower, upper]);
+}
+// Repeatable random numbers per chop, so the video render matches live playback
+const chopRand = (n, k) => {
+  const x = Math.sin(n * 127.1 + k * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+const PIECE_FLIGHT = 0.9;
+// Each chop's plate sits at its own tilt and slight turn
+const plateTilt = (m) => (chopRand(m, 50) - 0.5) * 0.6;
+const plateTurn = (m) => (chopRand(m, 51) - 0.5) * 0.5;
+// The blade edge (world angle a, through (0, BLADE_EDGE_Y)) in the frame of a plate tilted by tz
+function plateCut(a, tz) {
+  const c = BLADE_EDGE_Y - PLATE_Y;
+  const px = Math.sin(tz) * c;
+  const py = Math.cos(tz) * c;
+  const d = a - tz;
+  return { angle: d, y: py - px * Math.tan(d) };
+}
+
+// Embers drifting up through the dark
+const EMBER_COUNT = 260;
+const embers = new THREE.InstancedMesh(
+  new THREE.PlaneGeometry(0.09, 0.09),
+  new THREE.MeshBasicMaterial({ color: 0xff7a2a, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false }),
+  EMBER_COUNT
+);
+embers.frustumCulled = false;
+guillotineGroup.add(embers);
+// Rotating warning lights on top of the posts, throwing beams around
+const sirenGeo = new THREE.CylinderGeometry(0.15, 2.6, 1, 16, 1, true);
+sirenGeo.translate(0, -0.5, 0);
+sirenGeo.rotateX(-Math.PI / 2);
+const sirenMat = new THREE.ShaderMaterial({
+  vertexShader: `
+    varying float vAlong;
+    void main() {
+      vAlong = position.z;
+      gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying float vAlong;
+    void main() {
+      gl_FragColor = vec4(vec3(1.0, 0.12, 0.1) * 0.35 * (1.0 - vAlong), 1.0);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
+const sirens = new THREE.InstancedMesh(sirenGeo, sirenMat, 4);
+sirens.frustumCulled = false;
+guillotineGroup.add(sirens);
+const sirenTarget = new THREE.Vector3();
+
+const chopProject = new THREE.Vector3();
+const chopProject2 = new THREE.Vector3();
+const wordAim = new THREE.Vector3();
 
 // Path of the rectangle tunnel: straight at the camera, curving away more the further ahead it goes
 const tunnelBend = new THREE.Vector2();
@@ -3156,6 +3833,8 @@ function triggerBomHit(bomEv) {
     );
   }
   state.word3DExplodeAt = bomEv.explodeAt;
+
+  if (getFeaturePart(bomEv.bar) === 'colosseum') colosseumHit(bomEv.t, hitIdx === 3 ? 2.2 : 1.2);
 
   const isOverdrivePart = (bomEv.bar >= 96 && bomEv.bar < 144);
 
@@ -3588,7 +4267,29 @@ function animate(nowMs) {
     ringLine.visible = (climaxPhase === 2);
     heroMonument.visible = false;
   }
-  heroCubesMesh.visible = (climaxPhase === 0);
+  // Parts VI and VII: one effect each, no Pouët screen or props
+  const featurePart = getFeaturePart(currentBar);
+  if (featurePart) {
+    outerCubesMesh.visible = false;
+    portalGroup.visible = false;
+    eqInstanced.visible = false;
+    copperBoingGroup.visible = false;
+    glenzMetaballGroup.visible = false;
+    canyonGroup.visible = false;
+    tornadoInstanced.visible = false;
+    arenaGroup.visible = false;
+    ringLine.visible = false;
+    heroMonument.visible = false;
+  }
+  colosseumGroup.visible = (featurePart === 'colosseum');
+  guillotineGroup.visible = (featurePart === 'guillotine');
+  heroCubesMesh.visible = (climaxPhase === 0 && !featurePart);
+
+  // The prod under the blade: chop n cuts prod n, and the next one is waiting on the plate right after
+  let guillotineItem = null;
+  if (featurePart === 'guillotine') {
+    guillotineItem = GUILLOTINE_PRODS[(findIndexBefore(CHOP_TIMES, t) + 1) % GUILLOTINE_PRODS.length];
+  }
   thumbsGroup.visible = (climaxPhase !== 0);
   // The rectangle tunnel carries on as a rising shaft around the thumb swarm, tinted with the hit colours
   rectTunnelGroup.visible = (climaxPhase !== 0);
@@ -3639,6 +4340,27 @@ function animate(nowMs) {
       }
 
       if (climaxPhase === 2) word3DMesh.position.z -= SWARM_DOLLY;
+      if (featurePart === 'colosseum') {
+        // In front of the camera along its view, wherever the camera is in the arena
+        wordAim.subVectors(state.camLook, camera.position).normalize();
+        word3DMesh.position.copy(camera.position).addScaledVector(wordAim, 7.2 - state.kickEnv * 0.65);
+      }
+      if (featurePart === 'guillotine') {
+        word3DMesh.position.z -= GUILLOTINE_WORD_PUSH;
+        word3DMesh.position.y = GUILLOTINE_WORD_Y;
+        word3DMesh.scale.multiplyScalar(GUILLOTINE_WORD_SCALE);
+      }
+      if (featurePart) {
+        // Turn to face the camera (yaw and pitch), keeping the hit's tilt
+        const dx = camera.position.x - word3DMesh.position.x;
+        const dy = camera.position.y - word3DMesh.position.y;
+        const dz = camera.position.z - word3DMesh.position.z;
+        word3DMesh.rotation.order = 'YXZ';
+        word3DMesh.rotation.y = Math.atan2(dx, dz) + (state.activeHitIdx - 1.5) * -0.07;
+        word3DMesh.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz));
+      } else {
+        word3DMesh.rotation.order = 'XYZ';
+      }
 
       for (let i = 0; i < activeWordLetters.length; i++) {
         const ltr = activeWordLetters[i];
@@ -3863,6 +4585,226 @@ function animate(nowMs) {
     }
     tornadoInstanced.instanceMatrix.needsUpdate = true;
   }
+
+  if (colosseumGroup.visible) {
+    // Tiers spin in alternating directions, faster after each hit; screens flip over to new shots in a wave
+    for (let k = 0; k < COLOSSEUM_TIERS.length; k++) {
+      colosseumTierSpin[k] *= Math.exp(-dt * 2.5);
+      colosseumTierAngle[k] += dt * (COLOSSEUM_TIERS[k].dir * 0.08 + colosseumTierSpin[k]);
+    }
+    const breathe = 1.0 + state.kickEnv * 0.025;
+    focusScreenCount = 0;
+    for (let i = 0; i < COLOSSEUM_COUNT; i++) {
+      const { tier, slot } = colosseumSlots[i];
+      const T = COLOSSEUM_TIERS[tier];
+      const a = (slot / T.count) * Math.PI * 2 + colosseumTierAngle[tier];
+      const r = T.r * breathe;
+      dummy.position.set(Math.sin(a) * r, T.y, Math.cos(a) * r);
+      // Face the middle, leaning back like stadium seats
+      dummy.lookAt(0, T.y * 0.9, 0);
+      const fp = (t - colosseumFlipAt[i]) / 0.3;
+      if (fp >= 0 && fp < 1) {
+        // Turn edge-on, then come back round showing the front (never the mirrored back)
+        const e = fp * fp * (3 - 2 * fp);
+        dummy.rotateY(Math.PI * (e < 0.5 ? e : e - 1));
+        if (fp >= 0.5) colosseumTile.array[i] = colosseumNextTile[i];
+      } else if (fp >= 1) {
+        colosseumTile.array[i] = colosseumNextTile[i];
+      }
+      dummy.scale.setScalar(1);
+      dummy.updateMatrix();
+      colosseumScreens.setMatrixAt(i, dummy.matrix);
+      if (colosseumFocusTile >= 0 && colosseumTile.array[i] === colosseumFocusTile && focusScreenCount < focusScreens.length) {
+        focusScreens[focusScreenCount++].copy(dummy.position);
+      }
+    }
+    colosseumScreens.instanceMatrix.needsUpdate = true;
+    colosseumTile.needsUpdate = true;
+    colosseumScreens.material.uniforms.uFlash.value = state.invertEnv > 0.5 ? 0 : state.kickEnv * 0.2;
+    // Highlight the current comment's prod: it's put into the next flip wave and glows yellow
+    const focusShot = activeHeroItem ? COLOSSEUM_SHOTS.indexOf(activeHeroItem.screenshot) : -1;
+    if (focusShot !== colosseumFocusTile) colosseumFocusTile = focusShot;
+    colosseumScreens.material.uniforms.uFocus.value = focusShot;
+    colosseumScreens.material.uniforms.uTime.value = t;
+    colosseumScreens.material.uniforms.uPulse.value = 0.5 + 0.5 * Math.sin(t * 9.0) + state.kickEnv * 0.4;
+
+    if (activeHeroItem && activeHeroItem.comment) {
+      const text = activeHeroItem.comment.replace(/\s+/g, ' ').trim();
+      setTickerText(tickerComment, [
+        [`@${activeHeroItem.author || 'uncle-x'} `, '#ffdd00'],
+        [activeHeroItem.prodName ? `on ${activeHeroItem.prodName}: ` : '', '#8ab8f0'],
+        [text.length > 150 ? `${text.slice(0, 147)}...` : text, '#ffffff'],
+        ['      ', '#ffffff']
+      ]);
+    }
+    // Searchlights fan out from the thumbs-down on the floor to the highlighted screens, following them round
+    for (let i = 0; i < SEARCHLIGHT_COUNT; i++) {
+      const a = (i / SEARCHLIGHT_COUNT) * Math.PI * 2 - t * 0.3;
+      dummy.position.set(Math.sin(a) * 2.5, -17.8, Math.cos(a) * 2.5);
+      if (focusScreenCount > 0) {
+        searchlightTarget.copy(focusScreens[Math.floor((i * focusScreenCount) / SEARCHLIGHT_COUNT)]);
+      } else {
+        // Nothing highlighted yet: sweep the stands
+        const sweep = t * (0.7 + i * 0.13) + i * 2.0;
+        searchlightTarget.set(Math.sin(a + Math.cos(sweep)) * 30.0, Math.sin(sweep) * 8.0, Math.cos(a + Math.cos(sweep)) * 30.0);
+      }
+      dummy.lookAt(searchlightTarget);
+      const len = dummy.position.distanceTo(searchlightTarget);
+      dummy.scale.set(1, 1, len);
+      dummy.updateMatrix();
+      searchlights.setMatrixAt(i, dummy.matrix);
+    }
+    searchlights.instanceMatrix.needsUpdate = true;
+    searchlightMat.uniforms.uIntensity.value = 1.0 + state.kickEnv * 0.5;
+    floorEmblem.rotation.z = -t * 0.3;
+    floorEmblem.scale.setScalar(1.0 + state.kickEnv * 0.06);
+
+    tickerComment.tex.offset.x = t * 0.018;
+    tickerNames.tex.offset.x = -t * 0.025;
+  }
+
+  if (guillotineGroup.visible) {
+    const chopAngle = (n) => (n % 2 === 0 ? -0.24 : 0.24);
+
+    const ci = findIndexBefore(CHOP_TIMES, t);
+    const last = ci >= 0 ? CHOP_TIMES[ci] : null;
+    const next = CHOP_TIMES[ci + 1];
+    const since = last ? t - last.t : 10;
+
+    // Advance: right after each drop the line glides forward one guillotine, settling before the next drop.
+    // Slot 1 is the guillotine that just cut (rushing past the camera), slot 2 the next one, and so on
+    const interval = last && next ? next.t - last.t : 1;
+    const p = last && next ? Math.min(1, since / (interval * 0.7)) : 1;
+    const adv = (1 - (1 - p) * (1 - p) * (1 - p)) * GUILLOTINE_SPACING;
+    for (let i = 0; i < guillotineFrames.length; i++) {
+      const g = guillotineFrames[i];
+      const slot = i + 1;
+      g.position.z = GUILLOTINE_FRONT_Z + (1 - slot) * GUILLOTINE_SPACING + adv;
+      g.visible = g.position.z < camera.position.z - 1.0;
+      const blade = g.userData.blade;
+      let k = 0;
+      let n = 0;
+      if (slot === 1 && last) {
+        // Just cut: hold down, then rise
+        n = last.n;
+        if (since < CHOP_HOLD) k = 1;
+        else if (since < CHOP_HOLD + CHOP_RISE) {
+          const r = (since - CHOP_HOLD) / CHOP_RISE;
+          k = 1 - r * r * (3 - 2 * r);
+        }
+      } else if (slot === 2 && next) {
+        // Next up: falls onto the next drop
+        n = next.n;
+        if (next.t - t < CHOP_FALL) {
+          const f = (t - (next.t - CHOP_FALL)) / CHOP_FALL;
+          k = f * f;
+        }
+      } else {
+        n = (ci + slot) % 2;
+      }
+      blade.position.y = THREE.MathUtils.lerp(BLADE_TOP_Y, BLADE_EDGE_Y, k) - g.position.y;
+      blade.rotation.z = chopAngle(n);
+    }
+    // The waiting screenshot rides on the next guillotine
+    const nextZ = GUILLOTINE_FRONT_Z - GUILLOTINE_SPACING + adv - GUILLOTINE_FRONT_Z;
+    if (last && last.n !== lastChopN && since < 0.2) {
+      lastChopN = last.n;
+      spawnChopSparks(last.t, chopAngle(last.n));
+      state.chopFlash = 1.0;
+      state.kickEnv = Math.max(state.kickEnv, 1.2);
+    }
+    const cutAngle = last ? chopAngle(last.n) : 0;
+
+    const nextN = ci + 1;
+    const whole = guillotineItem ? getStampedShot(guillotineItem, nextN % GUILLOTINE_PRODS.length) : null;
+    plateWhole.visible = !!whole;
+    plateWhole.material.uniforms.tMap.value = whole;
+    plateWhole.position.z = PLATE_Z + nextZ;
+    plateWhole.rotation.set(0, plateTurn(nextN), plateTilt(nextN));
+
+    // Both halves of each recent cut fly away in random directions, spinning, under gravity
+    for (const pair of platePairs) pair[0].visible = pair[1].visible = false;
+    for (let back = 0; back < PLATE_PAIRS; back++) {
+      const chop = CHOP_TIMES[ci - back];
+      if (!chop) break;
+      const age = t - chop.t;
+      if (age < 0 || age > PIECE_FLIGHT) continue;
+      const item = GUILLOTINE_PRODS[chop.n % GUILLOTINE_PRODS.length];
+      const pair = platePairs[chop.n % PLATE_PAIRS];
+      pair.forEach((piece, side) => {
+        const r = (k) => chopRand(chop.n, side * 10 + k);
+        const up = side === 1 ? 1 : -1;
+        // Out to the sides, not into the lens
+        const vx = (r(0) < 0.5 ? -1 : 1) * (8.0 + r(6) * 10.0);
+        const vy = up * (2.0 + r(1) * 6.0) + 2.0;
+        const vz = (r(2) - 0.6) * 6.0;
+        piece.visible = true;
+        piece.material.uniforms.tMap.value = getStampedShot(item, chop.n % GUILLOTINE_PRODS.length);
+        const cut = plateCut(chopAngle(chop.n), plateTilt(chop.n));
+        piece.material.uniforms.uCutAngle.value = cut.angle;
+        piece.material.uniforms.uCutY.value = cut.y;
+        piece.material.uniforms.uGlow.value = Math.exp(-age * 5.0);
+        piece.position.set(vx * age, PLATE_Y + vy * age - 11.0 * age * age, PLATE_Z + vz * age);
+        piece.rotation.set((r(3) - 0.5) * 9.0 * age, plateTurn(chop.n) + (r(4) - 0.5) * 9.0 * age, plateTilt(chop.n) + (r(5) - 0.5) * 12.0 * age);
+        const s = age > PIECE_FLIGHT - 0.2 ? (PIECE_FLIGHT - age) / 0.2 : 1;
+        piece.scale.setScalar(Math.max(0.001, s));
+      });
+    }
+
+    // Slice the whole image along the blade edge as seen from the camera: project both ends of the edge
+    const ex = Math.cos(cutAngle) * 7.0;
+    const ey = Math.sin(cutAngle) * 7.0;
+    chopProject.set(-ex, BLADE_EDGE_Y - ey, BLADE_Z).project(camera);
+    chopProject2.set(ex, BLADE_EDGE_Y + ey, BLADE_Z).project(camera);
+    const aspect = postUniforms.uResolution.value.x / postUniforms.uResolution.value.y;
+    postUniforms.uCutX.value = (chopProject.x + chopProject2.x) * 0.25 + 0.5;
+    postUniforms.uCutY.value = (chopProject.y + chopProject2.y) * 0.25 + 0.5;
+    postUniforms.uCutAngle.value = Math.atan2(chopProject2.y - chopProject.y, (chopProject2.x - chopProject.x) * aspect);
+    postUniforms.uCutShift.value = since < 0.8 ? 0.022 * Math.exp(-since * 6.0) * (last.n % 2 === 0 ? 1 : -1) : 0;
+    postUniforms.uCutGlow.value = since < 0.5 ? Math.exp(-since * 9.0) : 0;
+
+    for (let i = 0; i < SPARK_COUNT; i++) {
+      const s = sparkData[i];
+      const age = t - s.born;
+      if (age < 0 || age > 0.7) {
+        dummy.scale.setScalar(0.0001);
+      } else {
+        dummy.position.set(s.p.x + s.v.x * age, s.p.y + s.v.y * age - 9.0 * age * age, s.p.z + s.v.z * age);
+        dummy.lookAt(dummy.position.x + s.v.x, dummy.position.y + s.v.y - 18.0 * age, dummy.position.z + s.v.z);
+        dummy.scale.setScalar(1.0 - age / 0.7);
+      }
+      dummy.updateMatrix();
+      sparks.setMatrixAt(i, dummy.matrix);
+    }
+    sparks.instanceMatrix.needsUpdate = true;
+  }
+  if (guillotineGroup.visible) {
+    for (let i = 0; i < EMBER_COUNT; i++) {
+      const g = (k) => {
+        const x = Math.sin(i * 91.7 + k * 47.3) * 43758.5453;
+        return x - Math.floor(x);
+      };
+      const life = ((t * (0.12 + g(0) * 0.1) + g(1)) % 1);
+      dummy.position.set((g(2) - 0.5) * 30.0 + Math.sin(t * 1.3 + i) * 0.6, -10.0 + life * 24.0, -20.0 + g(3) * 30.0);
+      dummy.quaternion.copy(camera.quaternion);
+      dummy.scale.setScalar((1.0 - life) * (0.6 + g(4)) + state.chopFlash * 0.6);
+      dummy.updateMatrix();
+      embers.setMatrixAt(i, dummy.matrix);
+    }
+    embers.instanceMatrix.needsUpdate = true;
+    for (let i = 0; i < 4; i++) {
+      const side = i < 2 ? -1 : 1;
+      const a = t * 4.0 + (i % 2) * Math.PI + side;
+      dummy.position.set(side * 8.4, 12.4, BLADE_Z - 0.2);
+      sirenTarget.set(dummy.position.x + Math.cos(a) * 14.0, dummy.position.y - 6.0, dummy.position.z + Math.sin(a) * 14.0);
+      dummy.lookAt(sirenTarget);
+      dummy.scale.set(1, 1, 16.0);
+      dummy.updateMatrix();
+      sirens.setMatrixAt(i, dummy.matrix);
+    }
+    sirens.instanceMatrix.needsUpdate = true;
+  }
+  state.chopFlash = Math.max(0, state.chopFlash - dt * 6.0);
 
   if (rectTunnelGroup.visible) {
     // Frames rush at the camera along the bending path, twisted into a spiral, flashing red on the 4th BOM hit
@@ -4209,6 +5151,12 @@ function animate(nowMs) {
   // Distant shaft frames fade into the red rather than into black
   if (climaxPhase === 2) scene.fog.color.copy(scene.background);
   else scene.fog.color.setHex(0x04060c);
+  if (featurePart === 'colosseum') {
+    scene.background.setHex(0x05040a);
+  } else if (featurePart === 'guillotine') {
+    // Black, flashing red on every chop
+    scene.background.setRGB(0.7 * state.chopFlash, 0.02 * state.chopFlash, 0.04 * state.chopFlash);
+  }
 
   // Camera update: slow, smooth, continuous glide during the beatless 0:26.30 - 0:52.60 section (Parts III & IV) and Chill Part VIII (2:11.5 - 2:37.8)
   if (part.id === 3) {
@@ -4254,6 +5202,60 @@ function animate(nowMs) {
     state.camTargetRoll = -sway * 0.25 + state.climaxBank * 0.4;
   }
 
+  if (featurePart === 'colosseum') {
+    // A new camera every 4-hit pattern: orbit, low looking up the tiers, high into the bowl, fast banking sweep
+    const orbit = (t - 48 * BAR_SEC) * 0.3;
+    const mode = Math.floor((currentBar - 48) / 2) % 4;
+    // All of them ride close to the screens (the tiers sit at radius 26-46)
+    if (mode === 0) {
+      // Skimming along the lower tiers, looking along the curve
+      const a = orbit * 1.6;
+      const r = 23.0;
+      state.camTargetPos.set(Math.sin(a) * r, -9.0 + Math.sin(t * 0.8) * 2.0, Math.cos(a) * r);
+      state.camTargetLook.set(Math.sin(a + 0.9) * 30.0, -7.0, Math.cos(a + 0.9) * 30.0);
+      state.camTargetRoll = -0.12;
+    } else if (mode === 1) {
+      // Facing the wall up close, rising up the tiers
+      const a = -orbit;
+      const r = 21.0;
+      const y = -12.0 + ((t - 48 * BAR_SEC) % (BAR_SEC * 2)) / (BAR_SEC * 2) * 20.0;
+      state.camTargetPos.set(Math.sin(a) * r, y, Math.cos(a) * r);
+      state.camTargetLook.set(Math.sin(a) * 40.0, y + 3.0, Math.cos(a) * 40.0);
+      state.camTargetRoll = Math.sin(t * 0.6) * 0.06;
+    } else if (mode === 2) {
+      // Hugging the upper tiers, looking down across the bowl
+      const a = orbit * 1.2;
+      const r = 30.0;
+      state.camTargetPos.set(Math.sin(a) * r, 15.0, Math.cos(a) * r);
+      state.camTargetLook.set(-Math.sin(a) * 6.0, -4.0, -Math.cos(a) * 6.0);
+      state.camTargetRoll = 0;
+    } else {
+      // Fast banking run past the screens
+      const a = orbit * 3.0;
+      const r = 24.0;
+      state.camTargetPos.set(Math.sin(a) * r, 1.0 + Math.sin(t * 2.0) * 4.0, Math.cos(a) * r);
+      state.camTargetLook.set(Math.sin(a + 1.2) * 34.0, 0.0, Math.cos(a + 1.2) * 34.0);
+      state.camTargetRoll = Math.sin(t * 1.2) * 0.3;
+    }
+  } else if (featurePart === 'guillotine') {
+    // A new angle every 4-hit pattern: front, low from the left, down the line of guillotines, high from the right
+    const mode = Math.floor((currentBar - 64) / 2) % 4;
+    if (mode === 0) {
+      state.camTargetPos.set(0, 0.8, 10.0);
+      state.camTargetLook.set(0, 1.0, -1.5);
+    } else if (mode === 1) {
+      state.camTargetPos.set(-5.0, -2.0, 8.2);
+      state.camTargetLook.set(0, 1.4, -1.5);
+    } else if (mode === 2) {
+      state.camTargetPos.set(7.6, 1.8, 5.4);
+      state.camTargetLook.set(-1.0, 1.2, -6.0);
+    } else {
+      state.camTargetPos.set(3.0, 5.6, 8.6);
+      state.camTargetLook.set(0, 0.0, -1.5);
+    }
+    state.camTargetRoll = 0;
+  }
+
   const isCrimeBarAny = isCrimeHoldBar || CRIME_3D_BOM_BAR_SET.has(currentBar);
   camera.position.lerp(state.camTargetPos, dt * (isSmoothGlide ? 3.2 : (isPart9Crazy ? 4.2 : 8.0)));
   state.camLook.lerp(state.camTargetLook, dt * (isSmoothGlide ? 3.8 : (isPart9Crazy ? 4.8 : 9.0)));
@@ -4261,6 +5263,7 @@ function animate(nowMs) {
   const shake = isSmoothGlide ? 0 : (((state.kickEnv * (0.14 + chaos * 0.35)) + (state.snareEnv * 0.16)) * shakeMult);
   camera.position.x += (Math.random() - 0.5) * shake;
   camera.position.y += (Math.random() - 0.5) * shake;
+  if (featurePart === 'guillotine') camera.position.y -= state.chopFlash * state.chopFlash * 0.35; // The impact
   camera.fov = 60 + state.kickEnv * (isPart9Crazy ? 1.4 : (2.5 + chaos * 3.5));
   camera.updateProjectionMatrix();
   camera.lookAt(state.camLook);
@@ -4326,6 +5329,19 @@ function animate(nowMs) {
       postUniforms.uRadial.value = state.kickEnv * 0.04;
       postUniforms.uOverdrive.value = finale ? Math.min(1.0, 0.4 + state.kickEnv * 0.3) : state.kickEnv * 0.15;
     }
+  }
+
+  postUniforms.uDuotone.value = featurePart === 'guillotine' ? 1.0 : 0.0;
+  postUniforms.uBloom.value = featurePart === 'colosseum' ? 0.4 + state.kickEnv * 0.25 : 0.0;
+  postUniforms.uGrade.value = featurePart === 'colosseum' ? 0.5 : 0.0;
+  if (featurePart === 'colosseum') {
+    postUniforms.uRadial.value = state.kickEnv * 0.012;
+    postUniforms.uChromatic.value = 0.002 + state.kickEnv * 0.006;
+    postUniforms.uGlitch.value *= 0.4;
+  }
+  if (featurePart !== 'guillotine') {
+    postUniforms.uCutShift.value = 0;
+    postUniforms.uCutGlow.value = 0;
   }
 
   renderer.setRenderTarget(renderTarget);
