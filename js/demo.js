@@ -1975,7 +1975,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 16,
     endBar: 20,
-    text: '"look mum (rip), i can do demos now!"',
+    text: 'look mum (rip), i can do demos now!',
     typeSec: 2.0
   },
   {
