@@ -370,7 +370,7 @@ const WORD_BOM_BAR_SET = new Set(WORD_BOM_BARS);
 
 // Odd bars that have the heavy 3-hit "BOOM - BOOM - BOOM" answer bass slam on 16th steps 1, 7, 13!
 const ANSWER_BASS_BAR_SET = new Set([
-  41, 43, 45, 47,
+  41, 43, 45,
   49, 51, 53, 55, 57, 59, 61,
   65, 67, 69, 71, 73, 75, 77,
   113, 115, 117, 119, 121, 123, 125,
@@ -382,6 +382,9 @@ const STOP_BAR_SET = new Set([62, 78, 103, 126]);
 
 // Bars in Part IX ("crazy part") that showcase "VIBECODING IS NOT A CRIME" in 3D with crazy blinking!
 const CRIME_3D_HOLD_BAR_SET = new Set([103]);
+// Quiet breakdown bars after the last pattern of a part: the last slammed word stays up with a milder version of the
+// crime strobe until the next part. bar -> [pattern bar whose last word is held, bar it holds until]
+const WORD_HOLD_BARS = { 47: [46, 48], 78: [76, 80], 79: [76, 80] };
 const CRIME_3D_BOM_BAR_SET = new Set();
 
 function getChaosLevel(t) {
@@ -1525,6 +1528,7 @@ function build3DWordVoxels(wordStr, hitIdx, crazyBlink = false) {
 
   state.activeWordTemplate = template;
   state.word3DCrazyBlink = Boolean(crazyBlink);
+  state.word3DMild = false;
 
   for (let i = 0; i < template.letterDefs.length; i++) {
     const def = template.letterDefs[i];
@@ -4102,6 +4106,8 @@ function animate(nowMs) {
   // In the Intro (Bars 0-31, 0:00 - 0:52.60) or any 2D AI text break/intermission, hide the 3D monument & arena!
   const active2DSegNow = getActive2DTextSegment(currentBar);
   const isCrimeHoldBar = CRIME_3D_HOLD_BAR_SET.has(currentBar);
+  const wordHold = WORD_HOLD_BARS[currentBar];
+  if (!wordHold) state.wordHoldUntil = 0;
   if (currentBar < 32) {
     const introPair = Math.floor(currentBar / 2);
     const introHater = HATER_KISSES[introPair % HATER_KISSES.length];
@@ -4117,6 +4123,20 @@ function animate(nowMs) {
   } else if (active2DSegNow) {
     heroMonument.visible = false;
     arenaGroup.visible = false;
+  } else if (wordHold) {
+    // Build the held word once per breakdown, even when scrubbing straight into it
+    if (state.wordHoldUntil !== wordHold[1]) {
+      const item = QUOTE_BY_POST.get(SLAM_PLAYLIST[wordHold[0]]);
+      const toks = item ? item.beatTokens : [];
+      let hit = 3;
+      while (hit > 0 && !toks[hit]) hit--;
+      if (toks[hit]) {
+        build3DWordVoxels(toks[hit], hit, true);
+        state.word3DMild = true;
+        state.word3DExplodeAt = wordHold[1] * BAR_SEC - 0.24;
+        state.wordHoldUntil = wordHold[1];
+      }
+    }
   } else if (isCrimeHoldBar) {
     heroMonument.visible = false;
     arenaGroup.visible = true;
@@ -4153,7 +4173,7 @@ function animate(nowMs) {
   }
 
   // 4) Explode & clear 3D Extruded Word right after the 4th BOM hit so non-4-BOM bars (and 2D text breaks) NEVER show words!
-  if (t < 52.55 || active2DSegNow || (!WORD_BOM_BAR_SET.has(currentBar) && !isCrimeHoldBar)) {
+  if (t < 52.55 || active2DSegNow || (!WORD_BOM_BAR_SET.has(currentBar) && !isCrimeHoldBar && !wordHold)) {
     word3DMesh.visible = false;
   } else if (state.word3DExplodeAt > 0 && t >= state.word3DExplodeAt) {
     state.word3DExploding = true;
@@ -4266,7 +4286,9 @@ function animate(nowMs) {
       const slamScale = 1.0 + state.kickEnv * 0.16;
 
       if (state.word3DCrazyBlink) {
-        const strobeTick = Math.floor(t * 28.0);
+        // The breakdown holds keep the word still and only cycle its colours slowly; the distortion is in the image
+        const mild = state.word3DMild ? 0 : 1.0;
+        const strobeTick = Math.floor(t * (state.word3DMild ? 9.0 : 28.0));
         const pal = CRIME_3D_STROBE_PALETTES[strobeTick % CRIME_3D_STROBE_PALETTES.length];
         const tpl = state.activeWordTemplate;
         if (tpl) {
@@ -4276,13 +4298,13 @@ function animate(nowMs) {
           tpl.sideMat.emissiveIntensity = (strobeTick % 2 === 0) ? 1.35 : 0.45;
           tpl.strokeMat.color.setHex(pal.stroke);
         }
-        const blinkPulse = (strobeTick % 4 === 3) ? 0.84 : (1.0 + (strobeTick % 2) * 0.12);
+        const blinkPulse = 1.0 + ((strobeTick % 4 === 3) ? -0.16 : (strobeTick % 2) * 0.12) * mild;
         word3DMesh.scale.setScalar(slamScale * blinkPulse);
-        word3DMesh.position.x = ((strobeTick * 17) % 9 - 4) * 0.08;
-        word3DMesh.position.y = 0.28 + ((strobeTick * 29) % 9 - 4) * 0.06;
-        word3DMesh.position.z = baseZ + state.kickEnv * 0.65 + (strobeTick % 2) * 0.32;
-        word3DMesh.rotation.z = Math.sin(t * 34.0) * 0.055;
-        word3DMesh.rotation.y = Math.cos(t * 18.0) * 0.08;
+        word3DMesh.position.x = ((strobeTick * 17) % 9 - 4) * 0.08 * mild;
+        word3DMesh.position.y = 0.28 + ((strobeTick * 29) % 9 - 4) * 0.06 * mild;
+        word3DMesh.position.z = baseZ + state.kickEnv * 0.65 + (strobeTick % 2) * 0.32 * mild;
+        word3DMesh.rotation.z = Math.sin(t * 34.0) * 0.055 * mild;
+        word3DMesh.rotation.y = Math.cos(t * 18.0) * 0.08 * mild;
         if (isCrimeHoldBar && strobeTick % 3 === 0) {
           state.invertEnv = Math.max(state.invertEnv, 0.88);
           state.glitchTear = Math.max(state.glitchTear, 0.78);
@@ -4321,15 +4343,16 @@ function animate(nowMs) {
 
       for (let i = 0; i < activeWordLetters.length; i++) {
         const ltr = activeWordLetters[i];
-        const blinkWave = state.word3DCrazyBlink ? Math.sin(i * 1.3 + t * 42.0) * 0.24 : 0;
+        const blinkAmt = state.word3DCrazyBlink && !state.word3DMild ? 1.0 : 0;
+        const blinkWave = Math.sin(i * 1.3 + t * 42.0) * 0.24 * blinkAmt;
         const waveZ = Math.sin(i * 0.9 + t * 20.0) * 0.16 * state.kickEnv + blinkWave;
         ltr.holder.position.set(
           ltr.bx + ltr.vx * explodeElapsed,
-          ltr.by + (state.word3DCrazyBlink ? Math.cos(i * 1.7 + t * 36.0) * 0.09 : 0) + ltr.vy * explodeElapsed,
+          ltr.by + Math.cos(i * 1.7 + t * 36.0) * 0.09 * blinkAmt + ltr.vy * explodeElapsed,
           ltr.bz + waveZ + ltr.vz * explodeElapsed
         );
         ltr.holder.rotation.set(
-          ltr.rx * explodeElapsed + (state.word3DCrazyBlink ? Math.sin(t * 28.0 + i) * 0.08 : 0),
+          ltr.rx * explodeElapsed + Math.sin(t * 28.0 + i) * 0.08 * blinkAmt,
           Math.sin(t * 8.0 + i) * 0.07 * state.kickEnv + ltr.ry * explodeElapsed,
           ltr.rz * explodeElapsed
         );
@@ -5325,6 +5348,12 @@ function animate(nowMs) {
   }
 
   postUniforms.uDuotone.value = featurePart === 'guillotine' ? 1.0 : 0.0;
+  if (wordHold) {
+    // Breakdown holds: the image tears and splits around the still word, in bursts that change a few times a second
+    const burst = 0.5 + 0.5 * Math.sin(t * 7.0) * Math.sin(t * 2.3);
+    postUniforms.uGlitch.value = Math.max(postUniforms.uGlitch.value, 0.45 + burst * 0.55);
+    postUniforms.uChromatic.value = Math.max(postUniforms.uChromatic.value, 0.012 + burst * 0.022);
+  }
   postUniforms.uBloom.value = featurePart === 'colosseum' ? 0.4 + state.kickEnv * 0.25 : 0.0;
   postUniforms.uGrade.value = featurePart === 'colosseum' ? 0.5 : 0.0;
   if (featurePart === 'colosseum') {
