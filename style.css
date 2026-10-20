@@ -166,6 +166,16 @@ body {
   animation: ai-cursor-blink 0.34s steps(1, end) infinite;
 }
 
+/* While editing mid-line, the cursor is a real character at the edit point instead of at the end */
+#ai-typing-text.editing::after {
+  display: none;
+}
+
+#ai-typing-text .caret {
+  margin: 0 1px;
+  animation: ai-cursor-blink 0.34s steps(1, end) infinite;
+}
+
 #ai-typing-text.crazy-blink::after {
   display: none;
 }

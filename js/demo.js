@@ -1976,8 +1976,10 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 16,
     endBar: 20,
-    text: 'look mum (rip), i can do demos now!',
-    typeSec: 2.0
+    text: 'look mum, i can do demos now!',
+    typeSec: 2.0,
+    // ...then the cursor goes back and adds this after 'mum'
+    insert: { after: 'mum', text: ' (rip)', at: 3.4, typeSec: 0.6 }
   },
   {
     startBar: 20,
@@ -2089,7 +2091,8 @@ function update2DAiTypewriter(t, currentBar) {
   const seg = getActive2DTextSegment(currentBar);
   if (!seg) {
     dom.aiTypingOverlay.classList.add('hidden');
-    dom.aiTypingText.classList.remove('crazy-blink');
+    dom.aiTypingText.classList.remove('crazy-blink', 'editing');
+    delete dom.aiTypingText.dataset.edit;
     dom.aiTypingText.style.transform = '';
     dom.aiTypingText.style.color = '';
     dom.aiTypingText.style.opacity = '';
@@ -2123,8 +2126,34 @@ function update2DAiTypewriter(t, currentBar) {
     dom.aiTypingText.style.transform = '';
     dom.aiTypingText.style.color = '#ffffff';
     dom.aiTypingText.style.opacity = '1.0';
-    const chars = Math.floor(seg.text.length * progress);
-    dom.aiTypingText.textContent = seg.text.slice(0, chars);
+    const ins = seg.insert;
+    if (ins && elapsed >= ins.at + ins.typeSec + 0.35) {
+      // Done editing: the cursor goes back to the end of the line
+      const pos = seg.text.indexOf(ins.after) + ins.after.length;
+      dom.aiTypingText.classList.remove('editing');
+      delete dom.aiTypingText.dataset.edit;
+      const full = seg.text.slice(0, pos) + ins.text + seg.text.slice(pos);
+      if (dom.aiTypingText.textContent !== full) dom.aiTypingText.textContent = full;
+    } else if (ins && elapsed >= ins.at) {
+      // Going back to edit: the cursor sits at the insertion point while the extra text types in
+      const n = Math.floor(ins.text.length * Math.min(1, (elapsed - ins.at) / ins.typeSec));
+      const pos = seg.text.indexOf(ins.after) + ins.after.length;
+      const before = seg.text.slice(0, pos) + ins.text.slice(0, n);
+      // Only rebuild when the text changes, so the cursor's blink animation keeps running
+      if (dom.aiTypingText.dataset.edit !== before) {
+        dom.aiTypingText.dataset.edit = before;
+        const caret = document.createElement('span');
+        caret.className = 'caret';
+        caret.textContent = '█';
+        dom.aiTypingText.classList.add('editing');
+        dom.aiTypingText.replaceChildren(before, caret, seg.text.slice(pos));
+      }
+    } else {
+      dom.aiTypingText.classList.remove('editing');
+      delete dom.aiTypingText.dataset.edit;
+      const chars = Math.floor(seg.text.length * progress);
+      dom.aiTypingText.textContent = seg.text.slice(0, chars);
+    }
   }
 }
 
