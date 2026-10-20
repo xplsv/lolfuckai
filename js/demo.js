@@ -2007,12 +2007,6 @@ const TWOD_TEXT_SEGMENTS = [
     text: 'rate limit exceeded while generating excuse for pouët comments...',
     typeSec: 2.4
   },
-  {
-    startBar: 78,
-    endBar: 80,
-    text: '> agy "hide the em-dashes, maali is coming"',
-    typeSec: 1.8
-  },
 
   // Part VIII Chill Intermission (Bars 80..95, 2:11.51 - 2:37.81, 4 bars = 6.58s each — slow typewriter!)
   {
@@ -3272,6 +3266,7 @@ guillotineGroup.add(sparks);
 const sparkData = Array.from({ length: SPARK_COUNT }, () => ({ born: -10, p: new THREE.Vector3(), v: new THREE.Vector3() }));
 let sparkCursor = 0;
 let lastChopN = -1;
+let guillotineFinaleDone = 0;
 function spawnChopSparks(t, angle) {
   for (let i = 0; i < 48; i++) {
     const s = sparkData[sparkCursor];
@@ -4667,11 +4662,38 @@ function animate(nowMs) {
       } else {
         n = (ci + slot) % 2;
       }
+      if (currentBar >= 78) {
+        // Finale: two waves of chops roll away down the corridor, one per bar, each blade dropping and lifting again
+        k = 0;
+        for (const waveBar of [78, 79]) {
+          const local = t - waveBar * BAR_SEC - (i - 1) * 0.16;
+          if (local < 0) continue;
+          let w = 0;
+          if (local < CHOP_FALL) w = (local / CHOP_FALL) ** 2;
+          else if (local < CHOP_FALL + CHOP_HOLD) w = 1;
+          else if (local < CHOP_FALL + CHOP_HOLD + CHOP_RISE * 2) {
+            const r = (local - CHOP_FALL - CHOP_HOLD) / (CHOP_RISE * 2);
+            w = 1 - r * r * (3 - 2 * r);
+          }
+          k = Math.max(k, w);
+        }
+        n = i;
+      }
       blade.position.y = THREE.MathUtils.lerp(BLADE_TOP_Y, BLADE_EDGE_Y, k) - g.position.y;
       blade.rotation.z = chopAngle(n);
     }
     // The waiting screenshot rides on the next guillotine
     const nextZ = GUILLOTINE_FRONT_Z - GUILLOTINE_SPACING + adv - GUILLOTINE_FRONT_Z;
+    // Each finale wave starts with a flash and sparks at the front guillotine
+    const finaleWave = currentBar >= 78 ? currentBar : 0;
+    if (finaleWave && guillotineFinaleDone !== finaleWave && t - currentBar * BAR_SEC > CHOP_FALL) {
+      guillotineFinaleDone = finaleWave;
+      spawnChopSparks(t, 0.24);
+      state.chopFlash = 1.0;
+      state.kickEnv = Math.max(state.kickEnv, 1.1);
+    } else if (!finaleWave) {
+      guillotineFinaleDone = 0;
+    }
     if (last && last.n !== lastChopN && since < 0.2) {
       lastChopN = last.n;
       spawnChopSparks(last.t, chopAngle(last.n));
@@ -5205,7 +5227,13 @@ function animate(nowMs) {
   } else if (featurePart === 'guillotine') {
     // A new angle every 4-hit pattern: front, low from the left, down the line of guillotines, high from the right
     const mode = Math.floor((currentBar - 64) / 2) % 4;
-    if (mode === 0) {
+    if (currentBar >= 78) {
+      // Finale breakdown: a slow pull back from the front guillotine, rising to look down the line
+      const k = Math.min(1, (t - 78 * BAR_SEC) / (2 * BAR_SEC));
+      const e = k * k * (3 - 2 * k);
+      state.camTargetPos.set(0, 0.8 + e * 3.2, 10.0 + e * 9.0);
+      state.camTargetLook.set(0, 1.0 - e * 0.6, -1.5 - e * 4.0);
+    } else if (mode === 0) {
       state.camTargetPos.set(0, 0.8, 10.0);
       state.camTargetLook.set(0, 1.0, -1.5);
     } else if (mode === 1) {
