@@ -1814,7 +1814,8 @@ function drawCommentStamp(item, n, text = item.comment) {
   const ctx = c.getContext('2d');
   ctx.font = '900 58px Impact, Anton, sans-serif';
   const lines = wrapCanvasLines(ctx, words.length > 110 ? `${words.slice(0, 107)}...` : words, W - 110, 3);
-  const h = 44 + 92 + lines.length * 62 + 30;
+  // The last line sits as far from the inner border as the author does from the top
+  const h = 44 + 92 + lines.length * 62 + 62;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
   ctx.fillRect(10, 10, W - 20, h - 20);
   ctx.fillStyle = ink;
