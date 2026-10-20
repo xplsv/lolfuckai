@@ -1986,7 +1986,7 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 8,
     endBar: 12,
-    text: '> agy "make a demo about the AI hate in pouët"',
+    text: '> agy "make a demo about AI hate in pouët"',
     typeSec: 3.1
   },
   {
