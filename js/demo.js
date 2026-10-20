@@ -1980,16 +1980,16 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 16,
     endBar: 20,
-    text: 'look mum, i can do demos now!',
-    typeSec: 2.0,
-    // ...then the cursor goes back and adds this after 'mum'
-    insert: { after: 'mum', text: ' (rip)', at: 3.4, typeSec: 0.6 }
+    text: '> agy "add more glitches so they think it\'s on purpose"',
+    typeSec: 3.3
   },
   {
     startBar: 20,
     endBar: 24,
-    text: '> agy "add more glitches so they think it\'s on purpose"',
-    typeSec: 3.3
+    text: 'look mum, i can do demos now!',
+    typeSec: 2.0,
+    // ...then the cursor goes back and adds this after 'mum'
+    insert: { after: 'mum', text: ' (rip)', at: 3.4, typeSec: 0.6 }
   },
   {
     startBar: 24,
