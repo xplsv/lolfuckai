@@ -1996,14 +1996,14 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 24,
     endBar: 28,
-    text: 'dedicated to mrpet\nthe demoscene didn\'t deserve you :(',
-    typeSec: 3.0
+    text: '"and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI" — @britelite',
+    typeSec: 5.1
   },
   {
     startBar: 28,
     endBar: 32,
-    text: '"and here i was wondering what uncle-x thinks of all this, because i\'ve never heard his opinion about AI" — @britelite',
-    typeSec: 6.0 // Finishes typing half a second before the drop
+    text: 'dedicated to mrpet\nthe demoscene didn\'t deserve you :(',
+    typeSec: 5.0
   },
 
   // Musical Breaks & Stop Bars (Pure 2D White Text over 3D Scene — No 3D Monument Box!)
