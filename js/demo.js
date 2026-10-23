@@ -5280,7 +5280,7 @@ function animate(nowMs) {
     // The BLIND? breakdown: the camera pulls back from the screen on an exponential ease in (the roll is added below)
     const k = Math.min(1, (t - 47 * BAR_SEC) / BAR_SEC);
     const e = blindBreakdownEase(k); // Exponential ease in: builds up, then whips into the drop
-    state.camTargetPos.set(0, 0.35 + e * 2.0, 12.2 + e * 20.0);
+    state.camTargetPos.set(0, 0.35 + e * 3.5, 12.2 + e * 40.0);
     state.camTargetLook.set(0, 0.3, -1.0);
     state.camTargetRoll = 0; // The roll is applied directly below
   }
