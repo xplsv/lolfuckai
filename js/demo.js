@@ -1965,8 +1965,8 @@ const TWOD_TEXT_SEGMENTS = [
   // Intro Credits (Bars 0..7, 0:00 - 0:13.15, 2 bars = 3.29s each)
   { startBar: 0, endBar: 2, text: 'xplsv', typeSec: 0.95 },
   { startBar: 2, endBar: 4, text: 'presents', typeSec: 1.15 },
-  { startBar: 4, endBar: 6, text: 'mrdoob vs argon vs opus', typeSec: 2.1 },
-  { startBar: 6, endBar: 8, text: 'a 100% vibecoded production', typeSec: 2.10 },
+  { startBar: 4, endBar: 6, text: 'a 100% vibecoded production', typeSec: 2.10 },
+  { startBar: 6, endBar: 8, text: 'mrdoob vs argon vs opus', typeSec: 2.1 },
 
   // Intro AI Prompt Narrative (Bars 8..31, 0:13.15 - 0:52.60, 4 bars = 6.58s each — slow typewriter!)
   {
