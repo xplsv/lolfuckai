@@ -1982,8 +1982,8 @@ const TWOD_TEXT_SEGMENTS = [
   {
     startBar: 16,
     endBar: 20,
-    text: '> agy "add some glitches so they think it\'s on purpose"',
-    typeSec: 3.3
+    text: '> agy "make no mistakes please"',
+    typeSec: 1.9
   },
   {
     startBar: 20,
