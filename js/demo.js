@@ -382,9 +382,11 @@ const STOP_BAR_SET = new Set([62, 78, 103, 126]);
 
 // Bars in Part IX ("crazy part") that showcase "VIBECODING IS NOT A CRIME" in 3D with crazy blinking!
 const CRIME_3D_HOLD_BAR_SET = new Set([103]);
-// Quiet breakdown bars after the last pattern of a part: the last slammed word stays up with a milder version of the
-// crime strobe until the next part. bar -> [pattern bar whose last word is held, bar it holds until]
-const WORD_HOLD_BARS = { 47: [46, 48], 78: [76, 80], 79: [76, 80] };
+// Quiet breakdown bars after the last pattern of a part: the image tears and splits through all of them, and in
+// Part V the last slammed word stays up, still, cycling its colours until the next part.
+// bar -> [pattern bar whose last word is held, bar it holds until]
+const BREAKDOWN_BAR_SET = new Set([47, 78, 79]);
+const WORD_HOLD_BARS = { 47: [46, 48] };
 const CRIME_3D_BOM_BAR_SET = new Set();
 
 function getChaosLevel(t) {
@@ -5348,8 +5350,8 @@ function animate(nowMs) {
   }
 
   postUniforms.uDuotone.value = featurePart === 'guillotine' ? 1.0 : 0.0;
-  if (wordHold) {
-    // Breakdown holds: the image tears and splits around the still word, in bursts that change a few times a second
+  if (BREAKDOWN_BAR_SET.has(currentBar)) {
+    // Breakdowns: the image tears and splits, in bursts that change a few times a second
     const burst = 0.5 + 0.5 * Math.sin(t * 7.0) * Math.sin(t * 2.3);
     postUniforms.uGlitch.value = Math.max(postUniforms.uGlitch.value, 0.45 + burst * 0.55);
     postUniforms.uChromatic.value = Math.max(postUniforms.uChromatic.value, 0.012 + burst * 0.022);
