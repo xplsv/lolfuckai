@@ -387,6 +387,8 @@ const CRIME_3D_HOLD_BAR_SET = new Set([103]);
 // bar -> [pattern bar whose last word is held, bar it holds until]
 const BREAKDOWN_BAR_SET = new Set([47, 78, 79]);
 const WORD_HOLD_BARS = { 47: [46, 48] };
+// Exponential ease in for the BLIND? breakdown camera (0..1 -> 0..1), soft enough that it gets going early
+const blindBreakdownEase = (k) => (Math.pow(2, 6 * Math.max(0, k)) - 1) / 63;
 const CRIME_3D_BOM_BAR_SET = new Set();
 
 function getChaosLevel(t) {
@@ -5274,6 +5276,15 @@ function animate(nowMs) {
     state.camTargetRoll = 0;
   }
 
+  if (currentBar === 47) {
+    // The BLIND? breakdown: the camera pulls back from the screen on an exponential ease in (the roll is added below)
+    const k = Math.min(1, (t - 47 * BAR_SEC) / BAR_SEC);
+    const e = blindBreakdownEase(k); // Exponential ease in: builds up, then whips into the drop
+    state.camTargetPos.set(0, 0.35 + e * 2.0, 12.2 + e * 20.0);
+    state.camTargetLook.set(0, 0.3, -1.0);
+    state.camTargetRoll = 0; // The roll is applied directly below
+  }
+
   const isCrimeBarAny = isCrimeHoldBar || CRIME_3D_BOM_BAR_SET.has(currentBar);
   camera.position.lerp(state.camTargetPos, dt * (isSmoothGlide ? 3.2 : (isPart9Crazy ? 4.2 : 8.0)));
   state.camLook.lerp(state.camTargetLook, dt * (isSmoothGlide ? 3.8 : (isPart9Crazy ? 4.8 : 9.0)));
@@ -5287,6 +5298,11 @@ function animate(nowMs) {
   camera.lookAt(state.camLook);
   state.camRoll = THREE.MathUtils.lerp(state.camRoll, state.camTargetRoll, dt * (isSmoothGlide ? 3.2 : 5.0));
   camera.rotation.z += state.camRoll + (isPart9Crazy ? Math.sin(t * 1.4) * 0.012 : (!isSmoothGlide && chaos > 0.8 ? Math.sin(t * 2.2) * (chaos - 0.75) * 0.18 : 0));
+  if (currentBar === 47) {
+    // BLIND? breakdown: five full turns on an exponential ease in, landing level for the colosseum drop
+    const k = Math.min(1, (t - 47 * BAR_SEC) / BAR_SEC);
+    camera.rotation.z += blindBreakdownEase(k) * Math.PI * 10;
+  }
   if (climaxPhase) {
     // Climax: a full barrel roll (a tilt in the swarm half) through every other wordless answer bar,
     // and a pitch dive, a yaw swing or both through the ones between. Word hits punch pitch and yaw.
